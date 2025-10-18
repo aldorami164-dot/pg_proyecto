@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply m-0 font-sans bg-gray-50 text-gray-900;
+    min-height: 100vh;
+  }
+
+  /* Scrollbar personalizado - General */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  /* Scrollbar ultra delgado y elegante para sidebar oscuro */
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Para Firefox */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+}
+
+@layer components {
+  /* =====================================================================
+     COMPONENTES COMPARTIDOS
+     ===================================================================== */
+
+  /* Botones Primary */
+  .btn-primary-gestion {
+    @apply px-4 py-2 bg-gestion-primary-600 hover:bg-gestion-primary-700
+           text-white font-medium rounded-lg shadow-sm
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-gestion-primary-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary-plataforma {
+    @apply px-6 py-3 bg-plataforma-primary-500 hover:bg-plataforma-primary-600
+           text-white font-semibold rounded-xl shadow-medium
+           transition-all duration-300 transform hover:scale-105
+           focus:outline-none focus:ring-2 focus:ring-plataforma-primary-400 focus:ring-offset-2;
+  }
+
+  /* Botones Secondary */
+  .btn-secondary-gestion {
+    @apply px-4 py-2 bg-white hover:bg-gray-50
+           text-gestion-secondary-700 font-medium rounded-lg
+           border border-gray-300 shadow-sm
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-gestion-primary-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary-plataforma {
+    @apply px-6 py-3 bg-white hover:bg-gray-50
+           text-plataforma-primary-600 font-semibold rounded-xl
+           border-2 border-plataforma-primary-500
+           transition-all duration-300 transform hover:scale-105;
+  }
+
+  /* Cards */
+  .card-gestion {
+    @apply bg-white rounded-lg shadow-soft p-6
+           transition-shadow duration-200 hover:shadow-medium;
+  }
+
+  .card-plataforma {
+    @apply bg-white rounded-2xl shadow-medium p-8
+           transition-all duration-300 hover:shadow-strong;
+  }
+
+  /* Inputs */
+  .input-base {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg
+           focus:outline-none focus:ring-2 focus:border-transparent
+           disabled:bg-gray-100 disabled:cursor-not-allowed
+           transition-all duration-200;
+  }
+
+  .input-gestion {
+    @apply input-base focus:ring-gestion-primary-500;
+  }
+
+  .input-plataforma {
+    @apply input-base focus:ring-plataforma-primary-500 rounded-xl;
+  }
+
+  /* Badges */
+  .badge-base {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-success {
+    @apply badge-base bg-green-50 text-green-700;
+  }
+
+  .badge-warning {
+    @apply badge-base bg-yellow-50 text-yellow-700;
+  }
+
+  .badge-error {
+    @apply badge-base bg-red-50 text-red-700;
+  }
+
+  .badge-info {
+    @apply badge-base bg-blue-50 text-blue-700;
+  }
+}
+
+@layer utilities {
+  /* Animaciones personalizadas */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  /* Truncate multiline */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
