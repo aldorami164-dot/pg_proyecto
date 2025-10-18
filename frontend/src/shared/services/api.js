@@ -9,6 +9,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Para enviar cookies
+  timeout: 60000, // 60 segundos (para servicios en Render que pueden tardar en despertar)
 })
 
 // FIX CRÍTICO: Sobrescribir transformRequest COMPLETAMENTE
