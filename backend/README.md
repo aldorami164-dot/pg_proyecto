@@ -503,6 +503,65 @@ backend/
 
 ---
 
+## 🚀 Despliegue en Render
+
+### Configurar Variables de Entorno en Render
+
+En el dashboard de Render, agregar las siguientes variables de entorno:
+
+**Base de Datos:**
+```
+DB_HOST=aws-1-us-east-2.pooler.supabase.com
+DB_PORT=6543
+DB_NAME=postgres
+DB_USER=postgres.tkapgaullvnpzjkssthb
+DB_PASSWORD=PPDPdhNo5ourm1ta
+DB_SSL=true
+DATABASE_URL=postgresql://postgres.tkapgaullvnpzjkssthb:PPDPdhNo5ourm1ta@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+```
+
+**Supabase:**
+```
+SUPABASE_URL=https://tkapgaullvnpzjkssthb.supabase.co
+SUPABASE_ANON_KEY=tu_anon_key
+SUPABASE_SERVICE_KEY=tu_service_key
+```
+
+**JWT:**
+```
+JWT_SECRET=sJv2Yp_bYy2bNiigviNfpbXo-LKK3uaWAYkYI7GSypY=
+JWT_REFRESH_SECRET=RfW9p6nXUoL4t0iZqD8bVrKj2HsGmE3pA7YxTnC5
+```
+
+**CORS (IMPORTANTE):**
+```
+FRONTEND_URL=https://tu-app.vercel.app
+```
+
+Si tienes múltiples dominios (desarrollo + producción):
+```
+FRONTEND_URL=http://localhost:5173,https://tu-app.vercel.app,https://tu-dominio.com
+```
+
+**Servidor:**
+```
+NODE_ENV=production
+PORT=3001
+WS_PORT=3002
+```
+
+### Build Command (Render)
+```
+npm install
+```
+
+### Start Command (Render)
+```
+npm start
+```
+
+---
+
 ## ⚙️ Variables de Entorno
 
 | Variable | Descripción | Ejemplo |
