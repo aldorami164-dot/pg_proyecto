@@ -115,8 +115,13 @@ const server = app.listen(PORT, () => {
   log.info('');
 });
 
-// Iniciar servidor WebSocket en puerto separado
-iniciarWebSocketServer(WS_PORT);
+// Iniciar servidor WebSocket solo en desarrollo
+// En producción (Render), solo se permite un puerto
+if (process.env.NODE_ENV !== 'production') {
+  iniciarWebSocketServer(WS_PORT);
+} else {
+  log.info('🔔 WebSocket desactivado en producción (Render solo permite un puerto)');
+}
 
 // Iniciar monitoreo del pool de conexiones (cada 30 segundos)
 iniciarMonitoreo(30000);
