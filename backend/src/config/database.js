@@ -26,6 +26,9 @@ const poolConfig = useConnectionString
       database: 'postgres',
       ssl: { rejectUnauthorized: false },
 
+      // CRÍTICO: Forzar IPv4 explícitamente (familia 4)
+      family: 4,
+
       // Configuración optimizada para Supabase en Render
       max: 5,                            // Reducir conexiones máximas
       min: 0,                            // No mantener conexiones idle
