@@ -1,10 +1,7 @@
-// Entry point para Vercel Serverless Functions
-// Este archivo SOLO se usa en Vercel, NO afecta tu desarrollo local
+// Vercel Serverless Function - Entry Point
+// Este archivo exporta la app de Express para Vercel
 
 const app = require('../src/app');
 
-// Vercel espera que exportemos directamente la app de Express
-// NO necesitamos app.listen() ni pool.query() aquí
-// Vercel maneja las conexiones automáticamente
-
+// Vercel automaticamente maneja las requests y las pasa a esta función
 module.exports = app;
