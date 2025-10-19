@@ -177,4 +177,6 @@ process.on('uncaughtException', (error) => {
   gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
-module.exports = server;
+// Exportar para Vercel (serverless) y para testing
+// En Vercel, no se ejecuta el server.listen(), solo se exporta la app
+module.exports = app;
