@@ -20,13 +20,14 @@ const poolConfig = useConnectionString
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
 
-      // Configuración optimizada para Supabase
-      max: 10,
-      min: 2,
-      idleTimeoutMillis: 60000,
-      connectionTimeoutMillis: 30000,
-      keepAlive: true,
-      keepAliveInitialDelayMillis: 10000,
+      // Configuración optimizada para Supabase Pooler en Render
+      max: 5,                            // Reducir conexiones máximas
+      min: 0,                            // No mantener conexiones idle (Supabase las cierra)
+      idleTimeoutMillis: 10000,          // Cerrar idle después de 10s
+      connectionTimeoutMillis: 10000,    // Timeout más corto
+      acquireTimeoutMillis: 10000,       // Timeout para adquirir conexión
+      allowExitOnIdle: true,             // Permitir cerrar cuando no hay conexiones
+      keepAlive: false,                  // Desactivar keep-alive (Supabase Pooler lo maneja)
     }
   : {
       host: process.env.DB_HOST,
@@ -36,7 +37,7 @@ const poolConfig = useConnectionString
       database: process.env.DB_NAME,
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 
-      // Configuración optimizada para Supabase
+      // Configuración para desarrollo local
       max: 10,
       min: 2,
       idleTimeoutMillis: 60000,

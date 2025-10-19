@@ -123,9 +123,14 @@ if (process.env.NODE_ENV !== 'production') {
   log.info('🔔 WebSocket desactivado en producción (Render solo permite un puerto)');
 }
 
-// Iniciar monitoreo del pool de conexiones (cada 30 segundos)
-iniciarMonitoreo(30000);
-log.info('📊 Monitoreo del pool de conexiones iniciado');
+// Iniciar monitoreo del pool solo en desarrollo
+// En producción, Supabase Pooler maneja las conexiones automáticamente
+if (process.env.NODE_ENV !== 'production') {
+  iniciarMonitoreo(30000);
+  log.info('📊 Monitoreo del pool de conexiones iniciado');
+} else {
+  log.info('📊 Monitoreo del pool desactivado en producción (Supabase Pooler lo maneja)');
+}
 
 // =============================================================================
 // MANEJO DE SEÑALES DE CIERRE
