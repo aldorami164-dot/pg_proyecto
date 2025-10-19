@@ -1,5 +1,5 @@
 const { query, getClient } = require('../config/database');
-const supabase = require('../config/supabase');
+const getSupabaseClient = require('../config/supabase');
 const { success, error } = require('../utils/response');
 const log = require('../utils/logger');
 
@@ -113,6 +113,7 @@ const subirImagen = async (req, res, next) => {
     const filePath = `galeria/${fileName}`;
 
     // Subir a Supabase Storage
+    const supabase = getSupabaseClient();
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('galeria')
       .upload(filePath, file.buffer, {
@@ -142,7 +143,7 @@ const subirImagen = async (req, res, next) => {
       };
     }
 
-    // Obtener URL pública
+    // Obtener URL pública (supabase ya está definido arriba)
     const { data: urlData } = supabase.storage
       .from('galeria')
       .getPublicUrl(filePath);
@@ -278,6 +279,7 @@ const eliminarImagen = async (req, res, next) => {
     const filePath = pathParts.slice(pathParts.indexOf('galeria')).join('/');
 
     // Eliminar de Supabase Storage
+    const supabase = getSupabaseClient();
     const { error: deleteError } = await supabase.storage
       .from('galeria')
       .remove([filePath]);
