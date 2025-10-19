@@ -24,8 +24,12 @@ const WS_PORT = process.env.WS_PORT || 3001;
 
 pool.query('SELECT NOW() as now, current_database() as database', (err, res) => {
   if (err) {
-    log.error('❌ Error al conectar a PostgreSQL:', err.message);
-    log.error('Verifica las credenciales en el archivo .env');
+    log.error('❌ Error al conectar a PostgreSQL:');
+    log.error('   Mensaje:', err.message);
+    log.error('   Código:', err.code);
+    log.error('   Stack:', err.stack);
+    log.error('');
+    log.error('Verifica las credenciales y la configuración de red');
     process.exit(1);
   }
 
