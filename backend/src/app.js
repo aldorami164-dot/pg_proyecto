@@ -43,7 +43,23 @@ const corsOptions = {
     // Permitir solicitudes sin origin (como herramientas de testing, Postman, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Verificar si el origen está en la lista de permitidos
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      // Permitir el origen exacto
+      if (origin === allowedOrigin) return true;
+
+      // Permitir todos los subdominios de Vercel (preview deployments)
+      if (origin.endsWith('.vercel.app')) return true;
+
+      // Si el allowedOrigin termina en .vercel.app, permitir ese dominio y sus variantes
+      if (allowedOrigin.endsWith('.vercel.app') && origin.includes(allowedOrigin.split('.vercel.app')[0])) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       log.warn(`CORS bloqueado para origen: ${origin}`);
