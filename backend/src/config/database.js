@@ -17,17 +17,23 @@ if (useConnectionString) {
 
 const poolConfig = useConnectionString
   ? {
-      connectionString: process.env.DATABASE_URL,
+      // NO usar connectionString porque causa problemas con IPv6
+      // En su lugar, parsear manualmente para forzar IPv4
+      host: 'db.tkapgaullvnpzjkssthb.supabase.co',
+      port: 5432,
+      user: 'postgres.tkapgaullvnpzjkssthb',
+      password: 'PPDPdhNo5ourm1ta',
+      database: 'postgres',
       ssl: { rejectUnauthorized: false },
 
-      // Configuración optimizada para Supabase Pooler en Render
+      // Configuración optimizada para Supabase en Render
       max: 5,                            // Reducir conexiones máximas
-      min: 0,                            // No mantener conexiones idle (Supabase las cierra)
+      min: 0,                            // No mantener conexiones idle
       idleTimeoutMillis: 10000,          // Cerrar idle después de 10s
       connectionTimeoutMillis: 10000,    // Timeout más corto
       acquireTimeoutMillis: 10000,       // Timeout para adquirir conexión
       allowExitOnIdle: true,             // Permitir cerrar cuando no hay conexiones
-      keepAlive: false,                  // Desactivar keep-alive (Supabase Pooler lo maneja)
+      keepAlive: false,                  // Desactivar keep-alive
     }
   : {
       host: process.env.DB_HOST,
