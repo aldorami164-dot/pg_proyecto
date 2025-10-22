@@ -581,6 +581,8 @@ const consultarDisponibilidad = async (req, res, next) => {
 
     for (const habitacion of habitacionesResult.rows) {
       // Verificar si hay reservas para esta habitación en estas fechas
+      // LÓGICA CORRECTA: El checkout de una reserva NO bloquea el checkin del mismo día
+      // Ejemplo: Reserva A sale 21-oct (checkout) → Reserva B puede entrar 21-oct (checkin)
       const reservasExistentes = await query(
         `SELECT r.id, r.codigo_reserva, r.fecha_checkin, r.fecha_checkout, er.nombre as estado
          FROM reservas r
@@ -588,19 +590,14 @@ const consultarDisponibilidad = async (req, res, next) => {
          WHERE r.habitacion_id = $1
            AND er.nombre != 'cancelada'
            AND (
-             (r.fecha_checkin >= $2 AND r.fecha_checkin < $3)
-             OR (r.fecha_checkout > $2 AND r.fecha_checkout <= $3)
-             OR (r.fecha_checkin <= $2 AND r.fecha_checkout >= $3)
+             (r.fecha_checkin < $3 AND r.fecha_checkout > $2)
            )`,
         [habitacion.id, fecha_checkin, fecha_checkout]
       );
 
-      const validacion = await query(
-        'SELECT validar_solapamiento_reservas($1, $2, $3, NULL) as disponible',
-        [habitacion.id, fecha_checkin, fecha_checkout]
-      );
-
-      const estaDisponible = validacion.rows[0].disponible;
+      // La lógica de disponibilidad ya está correctamente implementada en la query SQL arriba
+      // Si NO hay reservas existentes que se solapen, la habitación está disponible
+      const estaDisponible = reservasExistentes.rows.length === 0;
 
       if (reservasExistentes.rows.length > 0) {
         log.info(`   Habitación ${habitacion.numero}: ${estaDisponible ? '✅ DISPONIBLE' : '❌ OCUPADA'} - Reservas encontradas: ${reservasExistentes.rows.length}`);

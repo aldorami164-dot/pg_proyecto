@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const reportesController = require('../controllers/reportes.controller');
-const { verificarToken, esPersonal } = require('../middleware/auth');
+const { verificarToken, esAdmin } = require('../middleware/auth');
 const { validate, validateQuery } = require('../middleware/validation');
 const {
   generarReporteSchema,
@@ -11,12 +11,12 @@ const {
 /**
  * @route   POST /api/reportes/ocupacion
  * @desc    Generar reporte de ocupación
- * @access  Private (admin/recepcionista)
+ * @access  Private (admin only)
  */
 router.post(
   '/ocupacion',
   verificarToken,
-  esPersonal,
+  esAdmin,
   validate(generarReporteSchema),
   reportesController.generarReporte
 );
@@ -24,12 +24,12 @@ router.post(
 /**
  * @route   GET /api/reportes/ocupacion
  * @desc    Listar reportes históricos
- * @access  Private (admin/recepcionista)
+ * @access  Private (admin only)
  */
 router.get(
   '/ocupacion',
   verificarToken,
-  esPersonal,
+  esAdmin,
   validateQuery(listarReportesQuerySchema),
   reportesController.listarReportes
 );
@@ -37,13 +37,25 @@ router.get(
 /**
  * @route   GET /api/reportes/ocupacion/:id
  * @desc    Obtener detalles de un reporte
- * @access  Private (admin/recepcionista)
+ * @access  Private (admin only)
  */
 router.get(
   '/ocupacion/:id',
   verificarToken,
-  esPersonal,
+  esAdmin,
   reportesController.obtenerReporte
+);
+
+/**
+ * @route   DELETE /api/reportes/ocupacion/:id
+ * @desc    Eliminar un reporte
+ * @access  Private (admin only)
+ */
+router.delete(
+  '/ocupacion/:id',
+  verificarToken,
+  esAdmin,
+  reportesController.eliminarReporte
 );
 
 module.exports = router;

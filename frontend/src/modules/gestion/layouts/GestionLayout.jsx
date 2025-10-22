@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Compass,
   MapPin,
+  Sparkles,
 } from 'lucide-react'
 
 const GestionLayout = () => {
@@ -33,7 +34,8 @@ const GestionLayout = () => {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/gestion/login')
+    // Redirigir con recarga completa para limpiar estado de React
+    window.location.href = '/'
   }
 
   const menuItems = [
@@ -43,13 +45,14 @@ const GestionLayout = () => {
     { path: '/gestion/historial-reservas', icon: Archive, label: 'Historial' },
     { path: '/gestion/habitaciones', icon: Home, label: 'Habitaciones' },
     { path: '/gestion/huespedes', icon: UserCheck, label: 'Huéspedes' },
-    { path: '/gestion/qr', icon: QrCode, label: 'Códigos QR' },
+    { path: '/gestion/qr', icon: QrCode, label: 'Códigos QR', adminOnly: true },
     { path: '/gestion/solicitudes', icon: Bell, label: 'Solicitudes' },
     { path: '/gestion/usuarios', icon: Users, label: 'Usuarios', adminOnly: true },
-    { path: '/gestion/reportes', icon: BarChart3, label: 'Reportes' },
-    { path: '/gestion/galeria', icon: ImageIcon, label: 'Galería' },
+    { path: '/gestion/reportes', icon: BarChart3, label: 'Reportes', adminOnly: true },
+    { path: '/gestion/galeria', icon: ImageIcon, label: 'Galería', adminOnly: true },
     { path: '/gestion/experiencias', icon: Compass, label: 'Experiencias', adminOnly: true },
     { path: '/gestion/lugares-turisticos', icon: MapPin, label: 'Lugares', adminOnly: true },
+    { path: '/gestion/servicios', icon: Sparkles, label: 'Servicios', adminOnly: true },
   ]
 
   return (

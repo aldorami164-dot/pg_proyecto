@@ -82,19 +82,10 @@ const ExperienciasPage = () => {
     }
   ]
 
-  // Filtrar experiencias por categoría (filtra por palabras clave en nombre y descripción)
+  // Filtrar experiencias por categoría
   const experienciasFiltradas = filtroActivo === 'todas'
     ? experiencias
-    : experiencias.filter(exp => {
-        const texto = `${exp.nombre} ${exp.descripcion}`.toLowerCase()
-        const palabrasClave = {
-          aventura: ['lancha', 'kayak', 'hiking', 'escalada', 'aventura', 'tour', 'recorrido'],
-          cultura: ['maya', 'ceremonia', 'textiles', 'artesanía', 'cultura', 'tradicional', 'taller'],
-          naturaleza: ['lago', 'volcán', 'naturaleza', 'bosque', 'reserva', 'ecológico', 'flora', 'fauna'],
-          relax: ['spa', 'masaje', 'yoga', 'meditación', 'relax', 'relajación', 'sauna', 'wellness']
-        }
-        return palabrasClave[filtroActivo]?.some(palabra => texto.includes(palabra)) || false
-      })
+    : experiencias.filter(exp => exp.categoria === filtroActivo)
 
   // Destacar la primera experiencia filtrada
   const experienciaDestacada = experienciasFiltradas[0]
@@ -117,7 +108,7 @@ const ExperienciasPage = () => {
       <div className="container mx-auto px-6">
         {/* Filtros por categoría */}
         <div className="flex items-center justify-center gap-3 py-8 flex-wrap">
-          {['todas', 'aventura', 'cultura', 'naturaleza', 'relax'].map((filtro) => (
+          {['todas', 'aventura', 'cultura', 'naturaleza', 'gastronomia'].map((filtro) => (
             <button
               key={filtro}
               onClick={() => setFiltroActivo(filtro)}
@@ -127,7 +118,7 @@ const ExperienciasPage = () => {
                   : 'bg-white text-gray-700 border border-gray-200 hover:border-plataforma-primary-300 hover:shadow'
                 }`}
             >
-              {filtro}
+              {filtro === 'gastronomia' ? 'Gastronomía' : filtro}
             </button>
           ))}
         </div>

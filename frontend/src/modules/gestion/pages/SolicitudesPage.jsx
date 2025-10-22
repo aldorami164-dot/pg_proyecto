@@ -8,7 +8,7 @@ import Badge from '@shared/components/Badge'
 import Table from '@shared/components/Table'
 import Select from '@shared/components/Select'
 import Loader from '@shared/components/Loader'
-import { ClipboardList, CheckCircle, Clock, AlertCircle, Filter } from 'lucide-react'
+import { ClipboardList, CheckCircle, Clock, AlertCircle, Filter, Trash2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const SolicitudesPage = () => {
@@ -100,6 +100,22 @@ const SolicitudesPage = () => {
     }
   }
 
+  const handleEliminarSolicitud = async (solicitudId) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta solicitud? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      await solicitudesService.eliminar(solicitudId)
+      toast.success('Solicitud eliminada exitosamente')
+      cargarSolicitudes()
+    } catch (error) {
+      console.error('Error al eliminar solicitud:', error)
+      const mensaje = error.response?.data?.error || error.response?.data?.message || 'Error al eliminar la solicitud'
+      toast.error(mensaje)
+    }
+  }
+
   const getEstadoBadgeVariant = (estado) => {
     const variants = {
       'pendiente': 'warning',
@@ -108,7 +124,8 @@ const SolicitudesPage = () => {
     return variants[estado] || 'default'
   }
 
-  const columns = [
+  // Columnas para solicitudes PENDIENTES
+  const columnasPendientes = [
     {
       key: 'id',
       label: 'ID',
@@ -125,10 +142,8 @@ const SolicitudesPage = () => {
       key: 'habitacion',
       label: 'Habitación',
       render: (solicitud) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            Hab. {solicitud.habitacion_numero || 'N/A'}
-          </div>
+        <div className="font-medium text-gray-900">
+          Hab. {solicitud.habitacion_numero || 'N/A'}
         </div>
       )
     },
@@ -161,43 +176,106 @@ const SolicitudesPage = () => {
       )
     },
     {
-      key: 'estado',
-      label: 'Estado',
+      key: 'acciones',
+      label: 'Acciones',
       render: (solicitud) => (
-        <Badge variant={getEstadoBadgeVariant(solicitud.estado)}>
-          {solicitud.estado === 'en_proceso' ? 'EN PROCESO' : solicitud.estado.toUpperCase()}
-        </Badge>
+        <Button
+          variant="success"
+          size="sm"
+          onClick={() => handleCompletarSolicitud(solicitud.id)}
+          className="text-sm"
+        >
+          <CheckCircle size={16} className="mr-1" />
+          Completar
+        </Button>
+      )
+    }
+  ]
+
+  // Columnas para solicitudes COMPLETADAS
+  const columnasCompletadas = [
+    {
+      key: 'id',
+      label: 'ID',
+      render: (solicitud) => <span>#{solicitud.id}</span>
+    },
+    {
+      key: 'habitacion',
+      label: 'Habitación',
+      render: (solicitud) => (
+        <div className="font-medium text-gray-900">
+          Hab. {solicitud.habitacion_numero || 'N/A'}
+        </div>
+      )
+    },
+    {
+      key: 'servicio',
+      label: 'Servicio',
+      render: (solicitud) => (
+        <div>
+          <div className="font-medium text-gray-900">
+            {solicitud.servicio_nombre || 'N/A'}
+          </div>
+          {solicitud.notas && (
+            <div className="text-sm text-gray-500 max-w-xs truncate">
+              {solicitud.notas}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'creado_en',
+      label: 'Solicitado',
+      render: (solicitud) => (
+        <div className="text-sm">
+          <div>{new Date(solicitud.creado_en).toLocaleDateString()}</div>
+          <div className="text-gray-500">
+            {new Date(solicitud.creado_en).toLocaleTimeString()}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'fecha_atencion',
+      label: 'Completado',
+      render: (solicitud) => (
+        <div className="text-sm">
+          {solicitud.fecha_atencion ? (
+            <>
+              <div>{new Date(solicitud.fecha_atencion).toLocaleDateString()}</div>
+              <div className="text-gray-500">
+                {new Date(solicitud.fecha_atencion).toLocaleTimeString()}
+              </div>
+            </>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
       )
     },
     {
       key: 'acciones',
       label: 'Acciones',
       render: (solicitud) => (
-        <div className="flex items-center gap-2">
-          {solicitud.estado !== 'completada' && (
-            <Button
-              variant="success"
-              size="sm"
-              onClick={() => handleCompletarSolicitud(solicitud.id)}
-              className="text-sm"
-            >
-              <CheckCircle size={16} className="mr-1" />
-              Completar
-            </Button>
-          )}
-          {solicitud.estado === 'completada' && solicitud.fecha_atencion && (
-            <span className="text-sm text-gray-500">
-              Completada el {new Date(solicitud.fecha_atencion).toLocaleDateString()}
-            </span>
-          )}
-        </div>
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => handleEliminarSolicitud(solicitud.id)}
+          className="text-sm"
+        >
+          <Trash2 size={16} className="mr-1" />
+          Eliminar
+        </Button>
       )
     }
   ]
 
   // Separar solicitudes por estado
   const solicitudesPendientes = solicitudes.filter(s => s.estado === 'pendiente')
-  const solicitudesCompletadas = solicitudes.filter(s => s.estado === 'completada')
+  const solicitudesCompletadasTodas = solicitudes.filter(s => s.estado === 'completada')
+  // Mostrar solo las últimas 5 completadas
+  const solicitudesCompletadas = solicitudesCompletadasTodas.slice(0, 5)
 
   if (loading && solicitudes.length === 0) {
     return <Loader />
@@ -221,27 +299,30 @@ const SolicitudesPage = () => {
         </div>
       </div>
 
-      {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card module="gestion">
-          <div className="flex items-center justify-between">
+      {/* Estadísticas rápidas - Compactas */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card module="gestion" className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Clock className="text-yellow-600" size={20} />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Pendientes</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
+              <p className="text-xs text-gray-600">Pendientes</p>
+              <p className="text-xl font-bold text-yellow-600">
                 {solicitudesPendientes.length}
               </p>
-            </div>
-            <div className="p-3 bg-yellow-100 rounded-full">
-              <Clock className="text-yellow-600" size={24} />
             </div>
           </div>
         </Card>
 
-        <Card module="gestion">
-          <div className="flex items-center justify-between">
+        <Card module="gestion" className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="text-green-600" size={20} />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Completadas Hoy</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
+              <p className="text-xs text-gray-600">Completadas Hoy</p>
+              <p className="text-xl font-bold text-green-600">
                 {solicitudesCompletadas.filter(s => {
                   if (!s.fecha_atencion) return false
                   const hoy = new Date().toDateString()
@@ -250,51 +331,81 @@ const SolicitudesPage = () => {
                 }).length}
               </p>
             </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <CheckCircle className="text-green-600" size={24} />
-            </div>
           </div>
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card module="gestion">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter size={20} className="text-gray-500" />
-          <h3 className="font-medium text-gray-900">Filtros</h3>
-        </div>
+      {/* Filtros - Compactos */}
+      <Card module="gestion" className="p-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Filter size={16} className="text-gray-500" />
+            <h3 className="font-medium text-gray-900 text-sm">Filtros:</h3>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Estado"
-            name="estado"
-            value={filters.estado}
-            onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
-            options={estadosSolicitud}
-            module="gestion"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full sm:w-auto">
+            <Select
+              label="Estado"
+              name="estado"
+              value={filters.estado}
+              onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
+              options={estadosSolicitud}
+              module="gestion"
+            />
 
-          <Select
-            label="Habitación"
-            name="habitacion_id"
-            value={filters.habitacion_id}
-            onChange={(e) => setFilters({ ...filters, habitacion_id: e.target.value })}
-            options={[
-              { value: '', label: 'Todas las habitaciones' },
-              ...habitaciones.map(h => ({ value: h.id, label: `Hab. ${h.numero}` }))
-            ]}
-            module="gestion"
-          />
+            <Select
+              label="Habitación"
+              name="habitacion_id"
+              value={filters.habitacion_id}
+              onChange={(e) => setFilters({ ...filters, habitacion_id: e.target.value })}
+              options={[
+                { value: '', label: 'Todas las habitaciones' },
+                ...habitaciones.map(h => ({ value: h.id, label: `Hab. ${h.numero}` }))
+              ]}
+              module="gestion"
+            />
+          </div>
         </div>
       </Card>
 
-      {/* Tabla de Solicitudes */}
-      <Card title="Todas las Solicitudes" module="gestion">
+      {/* Tabla de Solicitudes PENDIENTES */}
+      <Card module="gestion">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock size={20} className="text-yellow-600" />
+          <h3 className="font-semibold text-gray-900">Solicitudes Pendientes</h3>
+          <Badge variant="warning">{solicitudesPendientes.length}</Badge>
+        </div>
         <Table
-          columns={columns}
-          data={solicitudes}
-          emptyMessage="No hay solicitudes registradas"
+          columns={columnasPendientes}
+          data={solicitudesPendientes}
+          emptyMessage="No hay solicitudes pendientes"
         />
+      </Card>
+
+      {/* Tabla de Solicitudes COMPLETADAS */}
+      <Card module="gestion">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle size={20} className="text-green-600" />
+            <h3 className="font-semibold text-gray-900">Solicitudes Completadas</h3>
+            <Badge variant="success">{solicitudesCompletadasTodas.length}</Badge>
+          </div>
+          {solicitudesCompletadasTodas.length > 5 && (
+            <span className="text-sm text-gray-500">
+              Mostrando últimas 5 de {solicitudesCompletadasTodas.length}
+            </span>
+          )}
+        </div>
+        <Table
+          columns={columnasCompletadas}
+          data={solicitudesCompletadas}
+          emptyMessage="No hay solicitudes completadas"
+        />
+        {solicitudesCompletadasTodas.length > 5 && (
+          <div className="mt-3 text-center text-sm text-gray-500">
+            💡 Elimina las solicitudes antiguas para mantener la lista limpia
+          </div>
+        )}
       </Card>
 
       {/* Notas informativas */}

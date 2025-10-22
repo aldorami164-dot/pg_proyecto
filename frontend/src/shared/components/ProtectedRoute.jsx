@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 
   if (!user) {
     // Redirigir a login guardando la ruta intentada
-    return <Navigate to="/gestion/login" state={{ from: location }} replace />
+    return <Navigate to="/" state={{ from: location }} replace />
   }
 
   // Verificar rol si es requerido

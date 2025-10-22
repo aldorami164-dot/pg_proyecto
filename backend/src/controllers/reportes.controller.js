@@ -236,8 +236,40 @@ const obtenerReporte = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/reportes/ocupacion/:id
+ * Eliminar un reporte de ocupación
+ * @access Private (admin/recepcionista)
+ */
+const eliminarReporte = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el reporte existe
+    const checkResult = await query(
+      'SELECT id FROM reportes_ocupacion WHERE id = $1',
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      throw { statusCode: 404, message: 'Reporte no encontrado' };
+    }
+
+    // Eliminar el reporte
+    await query('DELETE FROM reportes_ocupacion WHERE id = $1', [id]);
+
+    log.success(`Reporte ${id} eliminado por ${req.user.email}`);
+
+    return success(res, null, 'Reporte eliminado exitosamente');
+  } catch (err) {
+    log.error('Error al eliminar reporte:', err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   generarReporte,
   listarReportes,
-  obtenerReporte
+  obtenerReporte,
+  eliminarReporte
 };

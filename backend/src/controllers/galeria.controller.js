@@ -22,36 +22,55 @@ const listarImagenes = async (req, res, next) => {
     let paramCount = 1;
 
     if (categoria) {
-      whereClause += ` AND categoria = $${paramCount}`;
+      whereClause += ` AND ig.categoria = $${paramCount}`;
       params.push(categoria);
       paramCount++;
     }
 
     if (activo !== undefined) {
-      whereClause += ` AND activo = $${paramCount}`;
+      whereClause += ` AND ig.activo = $${paramCount}`;
       params.push(activo === 'true' || activo === true);
       paramCount++;
     }
 
     const result = await query(
       `SELECT
-        id,
-        titulo,
-        descripcion,
-        url_imagen,
-        categoria,
-        orden,
-        activo,
-        creado_en
-      FROM imagenes_galeria
+        ig.id,
+        ig.titulo,
+        ig.descripcion,
+        ig.url_imagen,
+        ig.categoria,
+        ig.orden,
+        ig.activo,
+        ig.creado_en,
+        -- Contadores de vinculación
+        COALESCE(
+          (SELECT COUNT(*) FROM habitaciones_imagenes hi WHERE hi.imagen_id = ig.id), 0
+        ) +
+        COALESCE(
+          (SELECT COUNT(*) FROM experiencias_imagenes ei WHERE ei.imagen_id = ig.id), 0
+        ) +
+        COALESCE(
+          (SELECT COUNT(*) FROM lugares_imagenes li WHERE li.imagen_id = ig.id), 0
+        ) as total_vinculos,
+        COALESCE(
+          (SELECT COUNT(*) FROM habitaciones_imagenes hi WHERE hi.imagen_id = ig.id), 0
+        ) as vinculos_habitaciones,
+        COALESCE(
+          (SELECT COUNT(*) FROM experiencias_imagenes ei WHERE ei.imagen_id = ig.id), 0
+        ) as vinculos_experiencias,
+        COALESCE(
+          (SELECT COUNT(*) FROM lugares_imagenes li WHERE li.imagen_id = ig.id), 0
+        ) as vinculos_lugares
+      FROM imagenes_galeria ig
       ${whereClause}
-      ORDER BY orden ASC, creado_en DESC
+      ORDER BY ig.orden ASC, ig.creado_en DESC
       LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
       [...params, limit, offset]
     );
 
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM imagenes_galeria ${whereClause}`,
+      `SELECT COUNT(*) as total FROM imagenes_galeria ig ${whereClause}`,
       params
     );
 

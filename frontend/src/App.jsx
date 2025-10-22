@@ -3,9 +3,6 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@shared/context/AuthContext'
 import { WebSocketProvider } from '@shared/context/WebSocketContext'
 
-// Importar Landing
-import Landing from '@/pages/Landing'
-
 // Importar layouts
 import GestionLayout from '@gestion/layouts/GestionLayout'
 import PlataformaLayout from '@plataforma/layouts/PlataformaLayout'
@@ -25,6 +22,7 @@ import ReportesPage from '@gestion/pages/ReportesPage'
 import GaleriaPage from '@gestion/pages/GaleriaPage'
 import ExperienciasGestionPage from '@gestion/pages/ExperienciasGestionPage'
 import LugaresTuristicosPage from '@gestion/pages/LugaresTuristicosPage'
+import ServiciosGestionPage from '@gestion/pages/ServiciosGestionPage'
 
 // Importar páginas de Plataforma
 import HomePage from '@plataforma/pages/HomePage'
@@ -34,6 +32,7 @@ import ExperienciaDetallePage from '@plataforma/pages/ExperienciaDetallePage'
 import LugaresPage from '@plataforma/pages/LugaresPage'
 import LugarDetallePage from '@plataforma/pages/LugarDetallePage'
 import ServiciosPage from '@plataforma/pages/ServiciosPage'
+import NormasPage from '@plataforma/pages/NormasPage'
 import ContactoPage from '@plataforma/pages/ContactoPage'
 
 // Componente para rutas protegidas
@@ -74,9 +73,9 @@ function App() {
         />
         <Routes>
           {/* ===================================================================
-              LANDING - PÁGINA DE SELECCIÓN INICIAL
+              LOGIN - PÁGINA PRINCIPAL
               =================================================================== */}
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<LoginPage />} />
 
           {/* ===================================================================
               MÓDULO PLATAFORMA PÚBLICA
@@ -89,15 +88,13 @@ function App() {
             <Route path="lugares" element={<LugaresPage />} />
             <Route path="lugares/:id" element={<LugarDetallePage />} />
             <Route path="servicios" element={<ServiciosPage />} />
+            <Route path="normas" element={<NormasPage />} />
             <Route path="contacto" element={<ContactoPage />} />
           </Route>
 
           {/* ===================================================================
               MÓDULO GESTIÓN (ADMIN)
               =================================================================== */}
-
-          {/* Login - Ruta pública */}
-          <Route path="/gestion/login" element={<LoginPage />} />
 
           {/* Rutas protegidas de Gestión */}
           <Route
@@ -122,6 +119,7 @@ function App() {
             <Route path="galeria" element={<GaleriaPage />} />
             <Route path="experiencias" element={<ExperienciasGestionPage />} />
             <Route path="lugares-turisticos" element={<LugaresTuristicosPage />} />
+            <Route path="servicios" element={<ServiciosGestionPage />} />
           </Route>
 
           {/* Ruta 404 */}

@@ -10,9 +10,10 @@ const CeldaDia = ({ fecha, habitacion, reserva, onClick }) => {
     return `${inicial1}.${inicial2}.`
   }
 
-  // Determinar si está disponible u ocupada
+  // Determinar estados
   const isDisponible = !reserva
   const isOcupada = reserva && reserva.estado_nombre === 'confirmada'
+  const isCompletada = reserva && reserva.estado_nombre === 'completada'
 
   return (
     <div
@@ -26,9 +27,10 @@ const CeldaDia = ({ fecha, habitacion, reserva, onClick }) => {
           w-full h-12 flex items-center justify-center transition-all duration-200 cursor-pointer
           ${isDisponible ? 'bg-green-500 hover:bg-green-600' : ''}
           ${isOcupada ? 'bg-red-500 hover:bg-red-600' : ''}
+          ${isCompletada ? 'bg-blue-500 hover:bg-blue-600' : ''}
         `}
       >
-        {isOcupada && (
+        {(isOcupada || isCompletada) && (
           <span className="text-white text-xs font-semibold">
             {getIniciales(reserva.huesped_nombre, reserva.huesped_apellido)}
           </span>
@@ -53,7 +55,42 @@ const CeldaDia = ({ fecha, habitacion, reserva, onClick }) => {
 
             {isOcupada && (
               <div>
-                <div className="font-semibold text-red-400 mb-2">Ocupada</div>
+                <div className="font-semibold text-red-400 mb-2">🔴 Ocupada</div>
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-gray-400">Huésped:</span>{' '}
+                    <span className="text-white font-medium">
+                      {reserva.huesped_nombre} {reserva.huesped_apellido}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Código:</span>{' '}
+                    <span className="text-white">{reserva.codigo_reserva}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Check-in:</span>{' '}
+                    <span className="text-white">{reserva.fecha_checkin}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Check-out:</span>{' '}
+                    <span className="text-white">{reserva.fecha_checkout}</span>
+                  </div>
+                  {reserva.numero_huespedes && (
+                    <div>
+                      <span className="text-gray-400">Huéspedes:</span>{' '}
+                      <span className="text-white">{reserva.numero_huespedes}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="text-gray-400 mt-2 text-[10px] border-t border-gray-700 pt-2">
+                  Click para ver detalles completos
+                </div>
+              </div>
+            )}
+
+            {isCompletada && (
+              <div>
+                <div className="font-semibold text-blue-400 mb-2">🔵 Completada (Check-out realizado)</div>
                 <div className="space-y-1">
                   <div>
                     <span className="text-gray-400">Huésped:</span>{' '}

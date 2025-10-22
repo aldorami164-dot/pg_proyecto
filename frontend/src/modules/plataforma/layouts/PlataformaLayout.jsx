@@ -18,9 +18,10 @@ const PlataformaLayout = () => {
 
   const navItems = [
     { path: '/plataforma', label: 'Inicio' },
-    { path: '/plataforma/experiencias', label: 'Experiencias' },
-    { path: '/plataforma/lugares', label: 'Lugares' },
+    { path: '/plataforma/experiencias', label: 'Tours Guiados' },
+    { path: '/plataforma/lugares', label: 'Lugares Cercanos' },
     { path: '/plataforma/servicios', label: 'Servicios' },
+    { path: '/plataforma/normas', label: 'Normas y Reglamentos' },
     { path: '/plataforma/contacto', label: 'Contacto' },
   ]
 
@@ -77,7 +78,7 @@ const PlataformaLayout = () => {
 
             {/* CTA Button */}
             <Link
-              to="/"
+              to="/plataforma"
               className={`hidden md:flex items-center gap-2 px-6 py-3 font-bold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 ${
                 scrolled
                   ? 'bg-plataforma-secondary-500 hover:bg-plataforma-secondary-600 text-white'
@@ -126,7 +127,7 @@ const PlataformaLayout = () => {
                 ))}
                 <li className="pt-2">
                   <Link
-                    to="/"
+                    to="/plataforma"
                     onClick={() => setMenuOpen(false)}
                     className="block w-full px-5 py-3.5 bg-plataforma-secondary-500 hover:bg-plataforma-secondary-600 text-white font-bold rounded-xl text-center transition-all duration-200 shadow-lg"
                   >

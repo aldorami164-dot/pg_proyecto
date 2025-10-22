@@ -3,6 +3,7 @@ import galeriaService from '@shared/services/galeriaService'
 import habitacionesService from '@shared/services/habitacionesService'
 import experienciasService from '@shared/services/experienciasService'
 import lugaresTuristicosService from '@shared/services/lugaresTuristicosService'
+import serviciosService from '@shared/services/serviciosService' // NUEVO
 import Card from '@shared/components/Card'
 import Button from '@shared/components/Button'
 import Modal from '@shared/components/Modal'
@@ -15,7 +16,8 @@ import { ImageIcon, Plus, Edit, Trash2, Power, Upload, Eye, Link as LinkIcon } f
 import toastMessages from '@shared/utils/toastMessages'
 
 const GaleriaPage = () => {
-  const [imagenes, setImagenes] = useState([])
+  const [imagenes, setImagenes] = useState([]) // Imágenes filtradas para mostrar
+  const [todasImagenes, setTodasImagenes] = useState([]) // NUEVO: Todas las imágenes sin filtrar (para contadores)
   const [loading, setLoading] = useState(true)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -27,17 +29,22 @@ const GaleriaPage = () => {
   const [habitaciones, setHabitaciones] = useState([])
   const [experiencias, setExperiencias] = useState([])
   const [lugares, setLugares] = useState([])
-  const [tipoEntidad, setTipoEntidad] = useState('habitacion') // 'habitacion', 'experiencia', 'lugar'
+  const [servicios, setServicios] = useState([]) // NUEVO
+  const [tipoEntidad, setTipoEntidad] = useState('habitacion') // 'habitacion', 'experiencia', 'lugar', 'servicio'
   const [entidadSeleccionada, setEntidadSeleccionada] = useState('')
   const [esPrincipal, setEsPrincipal] = useState(false)
   const [filters, setFilters] = useState({
-    activo: ''
+    activo: '',
+    categoria: '',
+    busqueda: '',
+    vinculacion: '' // 'todas', 'vinculadas', 'sin_vincular'
   })
 
   // Estado del formulario de upload
   const [uploadData, setUploadData] = useState({
     titulo: '',
     descripcion: '',
+    categoria: 'habitaciones', // Categoría por defecto
     imagen: null
   })
 
@@ -54,11 +61,39 @@ const GaleriaPage = () => {
   const cargarImagenes = async () => {
     try {
       setLoading(true)
-      const params = {}
-      if (filters.activo !== '') params.activo = filters.activo
 
-      const response = await galeriaService.listar(params)
-      setImagenes(response.imagenes || [])
+      // PASO 1: Cargar TODAS las imágenes sin filtros de categoría (para contadores correctos)
+      const responseCompleta = await galeriaService.listar({
+        activo: filters.activo !== '' ? filters.activo : undefined
+      })
+      const todasLasImagenes = responseCompleta.imagenes || []
+      setTodasImagenes(todasLasImagenes) // Guardar todas para los contadores
+
+      // PASO 2: Aplicar filtros para mostrar
+      let imagenesData = [...todasLasImagenes]
+
+      // Filtro de categoría
+      if (filters.categoria !== '') {
+        imagenesData = imagenesData.filter(img => img.categoria === filters.categoria)
+      }
+
+      // Filtro de búsqueda en el cliente (búsqueda en título y descripción)
+      if (filters.busqueda.trim()) {
+        const busquedaLower = filters.busqueda.toLowerCase()
+        imagenesData = imagenesData.filter(img =>
+          img.titulo.toLowerCase().includes(busquedaLower) ||
+          (img.descripcion && img.descripcion.toLowerCase().includes(busquedaLower))
+        )
+      }
+
+      // Filtro de vinculación en el cliente
+      if (filters.vinculacion === 'vinculadas') {
+        imagenesData = imagenesData.filter(img => img.total_vinculos > 0)
+      } else if (filters.vinculacion === 'sin_vincular') {
+        imagenesData = imagenesData.filter(img => img.total_vinculos === 0)
+      }
+
+      setImagenes(imagenesData)
     } catch (error) {
       console.error('Error al cargar imágenes:', error)
       toastMessages.generico.error('Error al cargar la galería')
@@ -101,6 +136,7 @@ const GaleriaPage = () => {
       formData.append('imagen', uploadData.imagen)
       formData.append('titulo', uploadData.titulo)
       formData.append('descripcion', uploadData.descripcion)
+      formData.append('categoria', uploadData.categoria)
 
       await galeriaService.subir(formData)
       toastMessages.generico.success('Imagen subida exitosamente')
@@ -171,6 +207,7 @@ const GaleriaPage = () => {
     setUploadData({
       titulo: '',
       descripcion: '',
+      categoria: 'habitaciones', // Por defecto: habitaciones
       imagen: null
     })
     // Reset file input
@@ -190,16 +227,18 @@ const GaleriaPage = () => {
     setEsPrincipal(false)
 
     try {
-      // Cargar todas las entidades en paralelo
-      const [habitacionesRes, experienciasRes, lugaresRes] = await Promise.all([
+      // Cargar todas las entidades en paralelo (ACTUALIZADO: + servicios)
+      const [habitacionesRes, experienciasRes, lugaresRes, serviciosRes] = await Promise.all([
         habitacionesService.listar({ activo: true }),
         experienciasService.getExperiencias({ activo: true }),
-        lugaresTuristicosService.getLugares({ activo: true })
+        lugaresTuristicosService.getLugares({ activo: true }),
+        serviciosService.listar({ activo: true }) // NUEVO
       ])
 
       setHabitaciones(habitacionesRes.habitaciones || [])
       setExperiencias(experienciasRes.experiencias || [])
       setLugares(lugaresRes.lugares || [])
+      setServicios(serviciosRes.servicios || []) // NUEVO
       setShowVincularModal(true)
     } catch (error) {
       console.error('Error al cargar entidades:', error)
@@ -209,8 +248,11 @@ const GaleriaPage = () => {
 
   const handleVincular = async () => {
     if (!entidadSeleccionada) {
-      const tipoTexto = tipoEntidad === 'habitacion' ? 'habitación' : tipoEntidad === 'experiencia' ? 'experiencia' : 'lugar turístico'
-      toastMessages.generico.error(`Debes seleccionar ${tipoEntidad === 'habitacion' ? 'una' : 'un'} ${tipoTexto}`)
+      const tipoTexto = tipoEntidad === 'habitacion' ? 'habitación' :
+                        tipoEntidad === 'experiencia' ? 'experiencia' :
+                        tipoEntidad === 'lugar' ? 'lugar turístico' : 'servicio'
+      const articulo = tipoEntidad === 'habitacion' ? 'una' : 'un'
+      toastMessages.generico.error(`Debes seleccionar ${articulo} ${tipoTexto}`)
       return
     }
 
@@ -233,6 +275,9 @@ const GaleriaPage = () => {
       } else if (tipoEntidad === 'lugar') {
         await lugaresTuristicosService.vincularImagen(entidadSeleccionada, vincularData)
         toastMessages.generico.success('Imagen vinculada exitosamente al lugar turístico')
+      } else if (tipoEntidad === 'servicio') {
+        await serviciosService.vincularImagen(entidadSeleccionada, vincularData)
+        toastMessages.generico.success('Imagen vinculada exitosamente al servicio')
       }
 
       setShowVincularModal(false)
@@ -249,9 +294,43 @@ const GaleriaPage = () => {
     }
   }
 
-  // Estadísticas
-  const imagenesActivas = imagenes.filter(i => i.activo).length
-  const imagenesInactivas = imagenes.filter(i => !i.activo).length
+  // Estadísticas (usar todasImagenes para contadores correctos)
+  const imagenesActivas = todasImagenes.filter(i => i.activo).length
+  const imagenesInactivas = todasImagenes.filter(i => !i.activo).length
+  const imagenesVinculadas = todasImagenes.filter(i => i.total_vinculos > 0).length
+  const imagenesSinVincular = todasImagenes.filter(i => i.total_vinculos === 0).length
+
+  // Definición de categorías (ACTUALIZADO: eliminadas servicios/restaurante, renombradas vistas y piscina)
+  const categorias = [
+    { valor: '', label: 'Todas', icon: '🖼️' },
+    { valor: 'habitaciones', label: 'Habitaciones', icon: '🛏️' },
+    { valor: 'hotel_exterior', label: 'Hotel', icon: '🏨' },
+    { valor: 'piscina', label: 'Lugares', icon: '📍' }, // RENOMBRADO: piscina -> Lugares
+    { valor: 'vistas', label: 'Tours', icon: '🗺️' } // RENOMBRADO: vistas -> Tours
+    // ELIMINADAS: servicios, restaurante
+  ]
+
+  // Mapeo de nombres de categoría para mostrar (backend usa nombres antiguos)
+  const getCategoriaLabel = (categoriaValue) => {
+    // Si la categoría no existe en la lista nueva, usar un mapeo legacy
+    const categoria = categorias.find(c => c.valor === categoriaValue)
+    if (categoria) return categoria
+
+    // Mapeos legacy para categorías antiguas (si existen imágenes con estos valores)
+    const legacyMap = {
+      'servicios': { valor: 'servicios', label: 'Servicios (Legacy)', icon: '✨' },
+      'restaurante': { valor: 'restaurante', label: 'Restaurante (Legacy)', icon: '🍽️' }
+      // Nota: "piscina" ahora se muestra como "Lugares" (renombrado, no legacy)
+    }
+
+    return legacyMap[categoriaValue] || { valor: categoriaValue, label: categoriaValue, icon: '🖼️' }
+  }
+
+  // Contador por categoría (usar todasImagenes sin filtrar)
+  const getCountPorCategoria = (categoria) => {
+    if (categoria === '') return todasImagenes.length
+    return todasImagenes.filter(img => img.categoria === categoria).length
+  }
 
   if (loading && imagenes.length === 0) {
     return <Loader />
@@ -279,7 +358,7 @@ const GaleriaPage = () => {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card module="gestion">
           <div className="flex items-center justify-between">
             <div>
@@ -307,6 +386,18 @@ const GaleriaPage = () => {
         <Card module="gestion">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm font-medium text-gray-600">Vinculadas</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">{imagenesVinculadas}</p>
+            </div>
+            <div className="p-3 bg-purple-100 rounded-full">
+              <LinkIcon className="text-purple-600" size={24} />
+            </div>
+          </div>
+        </Card>
+
+        <Card module="gestion">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm font-medium text-gray-600">Inactivas</p>
               <p className="text-3xl font-bold text-gray-600 mt-2">{imagenesInactivas}</p>
             </div>
@@ -317,42 +408,138 @@ const GaleriaPage = () => {
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card module="gestion">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">Filtrar por estado:</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilters({ ...filters, activo: '' })}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filters.activo === ''
-                  ? 'bg-gestion-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={() => setFilters({ ...filters, activo: 'true' })}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filters.activo === 'true'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Activas
-            </button>
-            <button
-              onClick={() => setFilters({ ...filters, activo: 'false' })}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filters.activo === 'false'
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Inactivas
-            </button>
+      {/* Pestañas de Categorías */}
+      <Card module="gestion" className="overflow-hidden">
+        <div className="border-b border-gray-200">
+          <div className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            {categorias.map((cat) => (
+              <button
+                key={cat.valor}
+                onClick={() => setFilters({ ...filters, categoria: cat.valor })}
+                className={`
+                  flex-shrink-0 px-4 py-3 border-b-2 font-medium text-sm transition-all whitespace-nowrap
+                  ${filters.categoria === cat.valor
+                    ? 'border-gestion-primary-600 text-gestion-primary-600 bg-gestion-primary-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                <span className="mr-2">{cat.icon}</span>
+                {cat.label}
+                <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">
+                  {getCountPorCategoria(cat.valor)}
+                </span>
+              </button>
+            ))}
           </div>
+        </div>
+      </Card>
+
+      {/* Filtros Avanzados */}
+      <Card module="gestion">
+        <div className="space-y-4">
+          {/* Búsqueda de texto */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Buscar por título o descripción:
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: Suite, Vista al lago, Exterior..."
+              value={filters.busqueda}
+              onChange={(e) => setFilters({ ...filters, busqueda: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gestion-primary-500 focus:border-gestion-primary-500"
+            />
+          </div>
+
+          {/* Filtros combinables en una fila */}
+          <div className="flex flex-wrap gap-4">
+            {/* Filtro de estado activo */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Estado:</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilters({ ...filters, activo: '' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.activo === ''
+                      ? 'bg-gestion-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setFilters({ ...filters, activo: 'true' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.activo === 'true'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Activas
+                </button>
+                <button
+                  onClick={() => setFilters({ ...filters, activo: 'false' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.activo === 'false'
+                      ? 'bg-gray-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Inactivas
+                </button>
+              </div>
+            </div>
+
+            {/* Filtro de vinculación */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vinculación:</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilters({ ...filters, vinculacion: '' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.vinculacion === ''
+                      ? 'bg-gestion-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setFilters({ ...filters, vinculacion: 'vinculadas' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.vinculacion === 'vinculadas'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Vinculadas
+                </button>
+                <button
+                  onClick={() => setFilters({ ...filters, vinculacion: 'sin_vincular' })}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filters.vinculacion === 'sin_vincular'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Sin Vincular
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Botón limpiar filtros (solo aparece si hay filtros activos) */}
+          {(filters.busqueda || filters.activo || filters.vinculacion || filters.categoria) && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setFilters({ activo: '', categoria: '', busqueda: '', vinculacion: '' })}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 underline"
+              >
+                Limpiar todos los filtros
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -394,6 +581,42 @@ const GaleriaPage = () => {
                     <p className="text-sm text-gray-600 mt-1 line-clamp-2">{imagen.descripcion}</p>
                   )}
                 </div>
+
+                {/* Badges de categoría y vinculación */}
+                <div className="flex flex-wrap gap-2">
+                  {/* Badge de categoría */}
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                    {getCategoriaLabel(imagen.categoria).icon} {' '}
+                    {getCategoriaLabel(imagen.categoria).label}
+                  </span>
+
+                  {/* Badge de vinculación */}
+                  {imagen.total_vinculos > 0 ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                      <LinkIcon size={12} className="mr-1" />
+                      {imagen.total_vinculos} vínculo{imagen.total_vinculos > 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-800">
+                      Sin vincular
+                    </span>
+                  )}
+                </div>
+
+                {/* Metadata de vinculación detallada (si hay vínculos) */}
+                {imagen.total_vinculos > 0 && (
+                  <div className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-2">
+                    {imagen.vinculos_habitaciones > 0 && (
+                      <div>🛏️ {imagen.vinculos_habitaciones} habitación{imagen.vinculos_habitaciones > 1 ? 'es' : ''}</div>
+                    )}
+                    {imagen.vinculos_experiencias > 0 && (
+                      <div>✨ {imagen.vinculos_experiencias} experiencia{imagen.vinculos_experiencias > 1 ? 's' : ''}</div>
+                    )}
+                    {imagen.vinculos_lugares > 0 && (
+                      <div>📍 {imagen.vinculos_lugares} lugar{imagen.vinculos_lugares > 1 ? 'es' : ''}</div>
+                    )}
+                  </div>
+                )}
 
                 {/* Metadata */}
                 <div className="text-xs text-gray-500">
@@ -489,6 +712,22 @@ const GaleriaPage = () => {
             required
             module="gestion"
             placeholder="Ej: Habitación Suite Presidencial"
+          />
+
+          <Select
+            label="Categoría"
+            name="categoria"
+            value={uploadData.categoria}
+            onChange={(e) => setUploadData({ ...uploadData, categoria: e.target.value })}
+            options={categorias
+              .filter(cat => cat.valor !== '') // Excluir "Todas"
+              .map(cat => ({
+                value: cat.valor,
+                label: `${cat.icon} ${cat.label}`
+              }))
+            }
+            required
+            module="gestion"
           />
 
           <Textarea
@@ -735,7 +974,7 @@ const GaleriaPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Vincular a:
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -777,6 +1016,20 @@ const GaleriaPage = () => {
                   }`}
                 >
                   Lugar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTipoEntidad('servicio')
+                    setEntidadSeleccionada('')
+                  }}
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    tipoEntidad === 'servicio'
+                      ? 'bg-slate-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Servicio
                 </button>
               </div>
             </div>
@@ -836,6 +1089,24 @@ const GaleriaPage = () => {
               />
             )}
 
+            {tipoEntidad === 'servicio' && (
+              <Select
+                label="Servicio"
+                name="entidad"
+                value={entidadSeleccionada}
+                onChange={(e) => setEntidadSeleccionada(e.target.value)}
+                options={[
+                  { value: '', label: 'Selecciona un servicio' },
+                  ...servicios.map(servicio => ({
+                    value: servicio.id.toString(),
+                    label: `${servicio.nombre} - ${servicio.categoria}`
+                  }))
+                ]}
+                required
+                module="gestion"
+              />
+            )}
+
             {/* Checkbox imagen principal */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <input
@@ -849,7 +1120,8 @@ const GaleriaPage = () => {
                 Establecer como imagen principal {
                   tipoEntidad === 'habitacion' ? 'de la habitación' :
                   tipoEntidad === 'experiencia' ? 'de la experiencia' :
-                  'del lugar turístico'
+                  tipoEntidad === 'lugar' ? 'del lugar turístico' :
+                  'del servicio'
                 }
               </label>
             </div>
@@ -860,7 +1132,8 @@ const GaleriaPage = () => {
                   ⚠️ Si marcas esta opción, automáticamente se desmarcará cualquier otra imagen que sea principal en {
                     tipoEntidad === 'habitacion' ? 'esta habitación' :
                     tipoEntidad === 'experiencia' ? 'esta experiencia' :
-                    'este lugar'
+                    tipoEntidad === 'lugar' ? 'este lugar' :
+                    'este servicio'
                   }.
                 </p>
               </div>
@@ -871,7 +1144,8 @@ const GaleriaPage = () => {
                 💡 <strong>Tip:</strong> Puedes vincular la misma imagen a múltiples {
                   tipoEntidad === 'habitacion' ? 'habitaciones' :
                   tipoEntidad === 'experiencia' ? 'experiencias' :
-                  'lugares'
+                  tipoEntidad === 'lugar' ? 'lugares' :
+                  'servicios'
                 }. La imagen se reutilizará sin duplicar el archivo.
               </p>
             </div>

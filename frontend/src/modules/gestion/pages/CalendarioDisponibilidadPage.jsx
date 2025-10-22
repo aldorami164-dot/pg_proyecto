@@ -198,7 +198,11 @@ const CalendarioDisponibilidadPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-red-500"></div>
-            <span className="text-sm text-gray-700">Ocupado</span>
+            <span className="text-sm text-gray-700">Ocupado (Check-in realizado)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+            <span className="text-sm text-gray-700">Completado (Check-out realizado)</span>
           </div>
         </div>
       </div>

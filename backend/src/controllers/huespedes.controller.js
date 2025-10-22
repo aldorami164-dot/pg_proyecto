@@ -28,23 +28,26 @@ const listar = async (req, res, next) => {
 
     // Filtrar por tipo de huésped según estado de reservas
     if (tipo === 'activos') {
-      // Huéspedes con reservas pendientes (futuras, sin check-in)
+      // Huéspedes con reservas futuras (pendientes o confirmadas pero que aún NO han llegado)
       whereClause = `
         WHERE h.id IN (
           SELECT DISTINCT r.huesped_id
           FROM reservas r
           INNER JOIN estados_reserva er ON r.estado_id = er.id
-          WHERE er.nombre = 'pendiente'
+          WHERE er.nombre IN ('pendiente', 'confirmada')
+            AND r.fecha_checkin > CURRENT_DATE
         )
       `;
     } else if (tipo === 'checkin') {
-      // Huéspedes con reservas confirmadas (actualmente en el hotel)
+      // Huéspedes actualmente hospedados (reservas confirmadas que ya hicieron check-in y aún no hacen check-out)
       whereClause = `
         WHERE h.id IN (
           SELECT DISTINCT r.huesped_id
           FROM reservas r
           INNER JOIN estados_reserva er ON r.estado_id = er.id
           WHERE er.nombre = 'confirmada'
+            AND r.fecha_checkin <= CURRENT_DATE
+            AND r.fecha_checkout > CURRENT_DATE
         )
       `;
     } else if (tipo === 'historicos') {
@@ -89,7 +92,7 @@ const listar = async (req, res, next) => {
         COUNT(DISTINCT r.id) FILTER (WHERE er.nombre = 'cancelada') as reservas_canceladas,
         COUNT(DISTINCT r.id) as total_reservas,
         MAX(r.fecha_checkout) FILTER (WHERE er.nombre IN ('pendiente', 'confirmada')) as proxima_salida,
-        MIN(r.fecha_checkin) FILTER (WHERE er.nombre = 'pendiente') as proxima_entrada
+        MIN(r.fecha_checkin) FILTER (WHERE er.nombre IN ('pendiente', 'confirmada') AND r.fecha_checkin > CURRENT_DATE) as proxima_entrada
       FROM huespedes h
       LEFT JOIN reservas r ON h.id = r.huesped_id
       LEFT JOIN estados_reserva er ON r.estado_id = er.id

@@ -28,10 +28,19 @@ const reportesService = {
     return response.data.data
   },
 
+  /**
+   * Eliminar un reporte de ocupación
+   */
+  eliminarReporteOcupacion: async (id) => {
+    const response = await api.delete(`/reportes/ocupacion/${id}`)
+    return response.data.data
+  },
+
   // Alias para compatibilidad con las páginas
   generar: function(data) { return this.generarReporteOcupacion(data) },
   listar: function(params) { return this.getReportesOcupacion(params) },
   obtener: function(id) { return this.getReporteOcupacion(id) },
+  eliminar: function(id) { return this.eliminarReporteOcupacion(id) },
 }
 
 export default reportesService

@@ -11,7 +11,7 @@ import Textarea from '@shared/components/Textarea'
 import Badge from '@shared/components/Badge'
 import Table from '@shared/components/Table'
 import Loader from '@shared/components/Loader'
-import { Calendar, Plus, Search, Filter, Eye, CheckCircle, XCircle, Clock, Edit, MapPin, User, Trash2 } from 'lucide-react'
+import { Calendar, Plus, Search, Filter, Eye, CheckCircle, XCircle, Clock, Edit, MapPin, User, Trash2, List } from 'lucide-react'
 import { formatDate, formatCurrency, calcularNoches } from '@shared/utils/formatters'
 import toastMessages from '@shared/utils/toastMessages'
 
@@ -26,6 +26,7 @@ const ReservasPage = () => {
   const [selectedReserva, setSelectedReserva] = useState(null)
   const [reservaToDelete, setReservaToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [tabFecha, setTabFecha] = useState('todas') // 'hoy' | 'proximas' | 'todas'
   const [filters, setFilters] = useState({
     estado: '',
     canal: '',
@@ -376,6 +377,47 @@ const ReservasPage = () => {
     return variants[estado] || 'default'
   }
 
+  // Filtrar reservas según el tab de fecha activo
+  const reservasFiltradas = reservas.filter(reserva => {
+    const fechaCheckin = reserva.fecha_checkin?.split('T')[0]
+
+    // Obtener fecha local (no UTC) para evitar problemas de zona horaria
+    const ahora = new Date()
+    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())
+      .toISOString().split('T')[0]
+
+    const fechaEn7dias = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 7)
+      .toISOString().split('T')[0]
+
+    if (tabFecha === 'hoy') {
+      return fechaCheckin === hoy
+    }
+    if (tabFecha === 'proximas') {
+      return fechaCheckin > hoy && fechaCheckin <= fechaEn7dias
+    }
+    return true // 'todas' - no filtra
+  })
+
+  // Contadores para los tabs
+  const contadores = {
+    hoy: reservas.filter(r => {
+      const ahora = new Date()
+      const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())
+        .toISOString().split('T')[0]
+      return r.fecha_checkin?.split('T')[0] === hoy
+    }).length,
+    proximas: reservas.filter(r => {
+      const fecha = r.fecha_checkin?.split('T')[0]
+      const ahora = new Date()
+      const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())
+        .toISOString().split('T')[0]
+      const fechaEn7dias = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 7)
+        .toISOString().split('T')[0]
+      return fecha > hoy && fecha <= fechaEn7dias
+    }).length,
+    todas: reservas.length
+  }
+
   const columns = [
     {
       key: 'id',
@@ -563,173 +605,249 @@ const ReservasPage = () => {
         </div>
       </Card>
 
-      {/* Lista de Reservas - Estilo Airbnb */}
-      <div className="space-y-4">
+      {/* Tabs de Fecha */}
+      <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+        <button
+          onClick={() => setTabFecha('hoy')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-md font-medium transition-all ${
+            tabFecha === 'hoy'
+              ? 'bg-gray-800 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          Hoy
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+            tabFecha === 'hoy' ? 'bg-white/20' : 'bg-gray-300 text-gray-700'
+          }`}>
+            {contadores.hoy}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setTabFecha('proximas')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-md font-medium transition-all ${
+            tabFecha === 'proximas'
+              ? 'bg-gray-800 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          Próximas 7 días
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+            tabFecha === 'proximas' ? 'bg-white/20' : 'bg-gray-300 text-gray-700'
+          }`}>
+            {contadores.proximas}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setTabFecha('todas')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-md font-medium transition-all ${
+            tabFecha === 'todas'
+              ? 'bg-gray-800 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <List className="w-4 h-4" />
+          Todas
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+            tabFecha === 'todas' ? 'bg-white/20' : 'bg-gray-300 text-gray-700'
+          }`}>
+            {contadores.todas}
+          </span>
+        </button>
+      </div>
+
+      {/* Tabla Compacta Estilo Booking.com */}
+      <Card module="gestion" className="overflow-hidden p-0">
         {reservas.length === 0 ? (
-          <Card module="gestion" className="text-center py-12">
+          <div className="text-center py-12 px-6">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">No hay reservas registradas</p>
-          </Card>
+          </div>
+        ) : reservasFiltradas.length === 0 ? (
+          <div className="text-center py-12 px-6">
+            <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No hay reservas para el período seleccionado</p>
+            <p className="text-gray-400 text-sm mt-2">Intenta seleccionar otro filtro de fecha</p>
+          </div>
         ) : (
-          reservas.map((reserva) => {
-            const iniciales = reserva.huesped_nombre
-              ?.split(' ')
-              .map(n => n[0])
-              .join('')
-              .toUpperCase()
-              .substring(0, 2) || 'HU'
+          <div className="overflow-x-auto">
+            <table className="reservas-table-compact">
+              <thead>
+                <tr>
+                  <th>Huésped</th>
+                  <th>Hab.</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Huéspedes</th>
+                  <th>Canal</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservasFiltradas.map((reserva) => {
+                  const iniciales = reserva.huesped_nombre
+                    ?.split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2) || 'HU'
 
-            return (
-              <Card key={reserva.id} module="gestion" className="hover:shadow-lg transition-all duration-300 border">
-                <div className="flex flex-col lg:flex-row items-start gap-3 lg:gap-4">
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-md">
-                    {iniciales}
-                  </div>
-
-                  {/* Contenido */}
-                  <div className="flex-1 min-w-0 w-full">
-                    {/* Header de la card */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h3 className="text-base font-bold text-gray-900">{reserva.huesped_nombre}</h3>
-                          <Badge variant={getEstadoBadgeVariant(reserva.estado_nombre)}>
-                            {reserva.estado_nombre?.toUpperCase() || 'N/A'}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            <span>Habitación {reserva.habitacion_numero || 'N/A'}</span>
+                  return (
+                    <tr
+                      key={reserva.id}
+                      className={`estado-${reserva.estado_nombre}`}
+                    >
+                      {/* Columna Huésped con avatar */}
+                      <td data-label="Huésped">
+                        <div className="flex items-center gap-2">
+                          <div className="guest-avatar-compact">
+                            {iniciales}
                           </div>
-                          <span>•</span>
-                          <span className="capitalize">{reserva.canal}</span>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 truncate">
+                              {reserva.huesped_nombre}
+                            </div>
+                            {reserva.huesped_email && (
+                              <div className="text-xs text-gray-500 truncate">
+                                {reserva.huesped_email}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-xs text-gray-500 font-medium">#{reserva.id}</span>
-                    </div>
+                      </td>
 
-                    {/* Información de fechas y precio */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 p-2.5 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Check-in</div>
+                      {/* Columna Habitación */}
+                      <td data-label="Hab.">
+                        <span className="font-semibold text-gray-900">
+                          {reserva.habitacion_numero || 'N/A'}
+                        </span>
+                      </td>
+
+                      {/* Columna Check-in */}
+                      <td data-label="Check-in">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                          <span className="text-xs font-medium">
+                            {formatDate(reserva.fecha_checkin)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Columna Check-out */}
+                      <td data-label="Check-out">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                          <span className="text-xs font-medium">
+                            {formatDate(reserva.fecha_checkout)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Columna Número de Huéspedes */}
+                      <td data-label="Huéspedes">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+                          <span className="font-medium">{reserva.numero_huespedes}</span>
+                        </div>
+                      </td>
+
+                      {/* Columna Canal */}
+                      <td data-label="Canal">
+                        <span className="text-xs capitalize text-gray-600">
+                          {reserva.canal_reserva}
+                        </span>
+                      </td>
+
+                      {/* Columna Total */}
+                      <td data-label="Total">
+                        <span className="font-bold text-gray-900">
+                          Q{parseFloat(reserva.precio_total || 0).toFixed(2)}
+                        </span>
+                      </td>
+
+                      {/* Columna Estado */}
+                      <td data-label="Estado">
+                        <span className={`status-icon ${reserva.estado_nombre}`}>
+                          {reserva.estado_nombre?.toUpperCase() || 'N/A'}
+                        </span>
+                      </td>
+
+                      {/* Columna Acciones - Aparecen en hover */}
+                      <td data-label="Acciones" className="acciones-cell">
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-blue-600" />
-                          <span className="text-xs font-medium text-gray-900">{formatDate(reserva.fecha_checkin)}</span>
+                          {/* Botón Ver Detalles - SIEMPRE visible */}
+                          <button
+                            onClick={() => handleVerDetalle(reserva)}
+                            className="action-btn-compact text-blue-600 hover:bg-blue-50"
+                            title="Ver detalles"
+                          >
+                            <Eye size={16} />
+                          </button>
+
+                          {/* Botones PENDIENTE */}
+                          {reserva.estado_nombre === 'pendiente' && (
+                            <>
+                              <button
+                                onClick={() => handleEdit(reserva)}
+                                className="action-btn-compact text-gray-600 hover:bg-gray-100"
+                                title="Editar"
+                              >
+                                <Edit size={16} />
+                              </button>
+
+                              <button
+                                onClick={() => handleCambiarEstado(reserva.id, 'confirmada')}
+                                className="action-btn-compact text-green-600 hover:bg-green-50"
+                                title="Confirmar"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+
+                              <button
+                                onClick={() => handleCambiarEstado(reserva.id, 'cancelada')}
+                                className="action-btn-compact text-red-600 hover:bg-red-50"
+                                title="Cancelar"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                            </>
+                          )}
+
+                          {/* Botones CONFIRMADA */}
+                          {reserva.estado_nombre === 'confirmada' && (
+                            <>
+                              <button
+                                onClick={() => handleCambiarEstado(reserva.id, 'completada')}
+                                className="action-btn-compact text-blue-600 hover:bg-blue-50"
+                                title="Check-out / Completar"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+
+                              <button
+                                onClick={() => handleConfirmarEliminar(reserva)}
+                                className="action-btn-compact text-red-600 hover:bg-red-50"
+                                title="Eliminar reserva"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Check-out</div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-blue-600" />
-                          <span className="text-xs font-medium text-gray-900">{formatDate(reserva.fecha_checkout)}</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Huéspedes</div>
-                        <div className="flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-600" />
-                          <span className="text-xs font-medium text-gray-900">{reserva.numero_huespedes}</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-0.5 font-semibold">Total</div>
-                        <span className="text-base font-bold text-gray-900">Q{parseFloat(reserva.precio_total || 0).toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    {/* Email */}
-                    {reserva.huesped_email && (
-                      <p className="text-xs text-gray-600 mb-2">{reserva.huesped_email}</p>
-                    )}
-
-                    {/* Botones de acción - TODOS los botones actuales */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        module="gestion"
-                        onClick={() => handleVerDetalle(reserva)}
-                        className="flex items-center gap-2"
-                        size="sm"
-                      >
-                        <Eye size={16} />
-                        <span className="hidden sm:inline">Ver detalles</span>
-                      </Button>
-
-                      {reserva.estado_nombre === 'pendiente' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            module="gestion"
-                            onClick={() => handleEdit(reserva)}
-                            className="flex items-center gap-2"
-                            size="sm"
-                          >
-                            <Edit size={16} />
-                            <span className="hidden sm:inline">Editar</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            module="gestion"
-                            onClick={() => handleCambiarEstado(reserva.id, 'confirmada')}
-                            className="flex items-center gap-2 text-green-600 hover:text-green-700 border-green-600 hover:border-green-700"
-                            size="sm"
-                          >
-                            <CheckCircle size={16} />
-                            <span className="hidden sm:inline">Confirmar</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            module="gestion"
-                            onClick={() => handleCambiarEstado(reserva.id, 'cancelada')}
-                            className="flex items-center gap-2 text-red-600 hover:text-red-700 border-red-600 hover:border-red-700"
-                            size="sm"
-                          >
-                            <XCircle size={16} />
-                            <span className="hidden sm:inline">Cancelar</span>
-                          </Button>
-                        </>
-                      )}
-
-                      {reserva.estado_nombre === 'confirmada' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            module="gestion"
-                            onClick={() => handleCambiarEstado(reserva.id, 'completada')}
-                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 border-blue-600 hover:border-blue-700"
-                            size="sm"
-                          >
-                            <CheckCircle size={16} />
-                            <span className="hidden sm:inline">Check-out</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            module="gestion"
-                            onClick={() => handleConfirmarEliminar(reserva)}
-                            className="flex items-center gap-2 text-red-600 hover:text-red-700 border-red-600 hover:border-red-700"
-                            size="sm"
-                          >
-                            <Trash2 size={16} />
-                            <span className="hidden sm:inline">Eliminar</span>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )
-          })
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </Card>
 
       {/* Modal Crear/Editar */}
       <Modal
@@ -988,7 +1106,7 @@ const ReservasPage = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Canal</label>
-                <p className="text-gray-900 capitalize">{selectedReserva.canal}</p>
+                <p className="text-gray-900 capitalize">{selectedReserva.canal_reserva}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Precio Total</label>

@@ -23,6 +23,8 @@ const plataformaRoutes = require('./routes/plataforma.routes');
 const galeriaRoutes = require('./routes/galeria.routes');
 const experienciasRoutes = require('./routes/experiencias.routes');
 const lugaresTuristicosRoutes = require('./routes/lugaresTuristicos.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const serviciosRoutes = require('./routes/servicios.routes');
 
 const app = express();
 
@@ -128,6 +130,8 @@ app.use('/api/plataforma', plataformaRoutes);
 app.use('/api/galeria', galeriaRoutes);
 app.use('/api/experiencias', experienciasRoutes);
 app.use('/api/lugares-turisticos', lugaresTuristicosRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/servicios', serviciosRoutes);
 
 // Ruta 404
 app.use('*', (req, res) => {

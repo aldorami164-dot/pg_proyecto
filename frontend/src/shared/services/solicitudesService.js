@@ -36,9 +36,18 @@ const solicitudesService = {
     return response.data.data
   },
 
+  /**
+   * Eliminar solicitud completada
+   */
+  eliminarSolicitud: async (id) => {
+    const response = await api.delete(`/solicitudes/${id}`)
+    return response.data.data
+  },
+
   // Alias para compatibilidad con las páginas
   listar: function(params) { return this.getSolicitudes(params) },
   completar: function(id, notas) { return this.completarSolicitud(id, notas) },
+  eliminar: function(id) { return this.eliminarSolicitud(id) },
 }
 
 export default solicitudesService

@@ -58,4 +58,16 @@ router.patch(
   solicitudesController.completarSolicitud
 );
 
+/**
+ * @route   DELETE /api/solicitudes/:id
+ * @desc    Eliminar solicitud completada
+ * @access  Private (admin)
+ */
+router.delete(
+  '/:id',
+  verificarToken,
+  esPersonal,
+  solicitudesController.eliminarSolicitud
+);
+
 module.exports = router;

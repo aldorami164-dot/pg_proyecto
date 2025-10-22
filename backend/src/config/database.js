@@ -17,20 +17,19 @@ if (useConnectionString) {
 
 const poolConfig = useConnectionString
   ? {
-      // NO usar connectionString porque causa problemas con IPv6
-      // En su lugar, parsear manualmente para forzar IPv4
-      host: 'db.tkapgaullvnpzjkssthb.supabase.co',
-      port: 5432,
-      user: 'postgres.tkapgaullvnpzjkssthb',
-      password: 'PPDPdhNo5ourm1ta',
-      database: 'postgres',
+      // Usar variables de entorno (Railway/Render) con Supabase Pooler
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT) || 6543,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME || 'postgres',
       ssl: { rejectUnauthorized: false },
 
       // CRÍTICO: Forzar IPv4 explícitamente (familia 4)
       family: 4,
 
-      // Configuración optimizada para Supabase en Render
-      max: 5,                            // Reducir conexiones máximas
+      // Configuración optimizada para Railway Hobby + Supabase Pooler
+      max: 5,                            // Reducir conexiones máximas para plan Hobby
       min: 0,                            // No mantener conexiones idle
       idleTimeoutMillis: 10000,          // Cerrar idle después de 10s
       connectionTimeoutMillis: 10000,    // Timeout más corto

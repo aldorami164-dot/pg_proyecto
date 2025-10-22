@@ -21,8 +21,9 @@ const CalendarioMensual = ({ mes, anio, habitaciones, reservas, habitacionFiltra
     return reservas.find(r => {
       if (r.habitacion_id !== habitacionId) return false
 
-      // Excluir canceladas, completadas y pendientes (solo confirmadas bloquean)
-      if (['cancelada', 'completada', 'pendiente'].includes(r.estado_nombre)) return false
+      // Excluir solo canceladas y pendientes
+      // Mostrar: confirmadas (rojo) y completadas (azul)
+      if (['cancelada', 'pendiente'].includes(r.estado_nombre)) return false
 
       const checkin = new Date(r.fecha_checkin)
       const checkout = new Date(r.fecha_checkout)

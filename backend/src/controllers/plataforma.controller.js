@@ -110,39 +110,64 @@ const obtenerExperiencias = async (req, res, next) => {
 
 /**
  * GET /api/plataforma/servicios
- * Obtener servicios disponibles
+ * Obtener servicios disponibles con instrucciones e imagen principal
  * @access Public
  */
 const obtenerServicios = async (req, res, next) => {
   try {
     const result = await query(
       `SELECT
-        id,
-        nombre,
-        descripcion,
-        categoria,
-        precio,
-        tiene_costo,
-        horario_inicio,
-        horario_fin
-      FROM servicios
-      WHERE activo = true
-      ORDER BY tiene_costo DESC, nombre ASC`
+        s.id,
+        s.nombre,
+        s.descripcion,
+        s.categoria,
+        s.precio,
+        s.tiene_costo,
+        s.horario_inicio,
+        s.horario_fin,
+        s.solicitable,
+        s.icono,
+        img.url_imagen as imagen_principal
+      FROM servicios s
+      LEFT JOIN LATERAL (
+        SELECT ig.url_imagen
+        FROM servicios_imagenes si
+        INNER JOIN imagenes_galeria ig ON si.imagen_id = ig.id
+        WHERE si.servicio_id = s.id
+          AND ig.activo = true
+        ORDER BY si.es_principal DESC, si.orden ASC, si.creado_en ASC
+        LIMIT 1
+      ) img ON true
+      WHERE s.activo = true
+      ORDER BY s.tiene_costo DESC, s.nombre ASC`
     );
 
-    // Formatear horarios
-    const servicios = result.rows.map(servicio => ({
-      ...servicio,
-      horario: servicio.horario_inicio && servicio.horario_fin
-        ? `${servicio.horario_inicio} - ${servicio.horario_fin}`
-        : null,
-      horario_inicio: undefined,
-      horario_fin: undefined
-    }));
+    // Obtener instrucciones para cada servicio
+    const serviciosConInstrucciones = await Promise.all(
+      result.rows.map(async (servicio) => {
+        const instruccionesResult = await query(
+          `SELECT texto_instruccion
+           FROM servicios_instrucciones
+           WHERE servicio_id = $1 AND activo = true
+           ORDER BY orden ASC`,
+          [servicio.id]
+        );
 
-    log.info(`${servicios.length} servicios obtenidos`);
+        return {
+          ...servicio,
+          horario: servicio.horario_inicio && servicio.horario_fin
+            ? `${servicio.horario_inicio} - ${servicio.horario_fin}`
+            : null,
+          instrucciones: instruccionesResult.rows.map(i => i.texto_instruccion),
+          horario_inicio: undefined,
+          horario_fin: undefined
+        };
+      })
+    );
 
-    return success(res, servicios);
+    log.info(`${serviciosConInstrucciones.length} servicios obtenidos con instrucciones`);
+
+    return success(res, serviciosConInstrucciones);
   } catch (err) {
     log.error('Error al obtener servicios:', err.message);
     next(err);

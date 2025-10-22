@@ -8,7 +8,7 @@ import Select from '@shared/components/Select'
 import Badge from '@shared/components/Badge'
 import Table from '@shared/components/Table'
 import Loader from '@shared/components/Loader'
-import { BarChart3, Plus, Calendar, TrendingUp, Eye, Download, DollarSign, Users } from 'lucide-react'
+import { BarChart3, Plus, Calendar, TrendingUp, Eye, Download, DollarSign, Users, Trash2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import {
   BarChart,
@@ -31,8 +31,11 @@ const ReportesPage = () => {
   const [loading, setLoading] = useState(true)
   const [showGenerarModal, setShowGenerarModal] = useState(false)
   const [showDetalleModal, setShowDetalleModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedReporte, setSelectedReporte] = useState(null)
+  const [reporteToDelete, setReporteToDelete] = useState(null)
   const [generandoReporte, setGenerandoReporte] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [filters, setFilters] = useState({
     tipo_periodo: '',
     fecha_desde: '',
@@ -129,6 +132,29 @@ const ReportesPage = () => {
     }
   }
 
+  const handleConfirmarEliminar = (reporte) => {
+    setReporteToDelete(reporte)
+    setShowDeleteModal(true)
+  }
+
+  const handleEliminarReporte = async () => {
+    if (!reporteToDelete) return
+
+    try {
+      setDeleting(true)
+      await reportesService.eliminar(reporteToDelete.id)
+      toast.success('Reporte eliminado exitosamente')
+      setShowDeleteModal(false)
+      setReporteToDelete(null)
+      cargarReportes()
+    } catch (error) {
+      console.error('Error al eliminar reporte:', error)
+      toast.error('Error al eliminar el reporte')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const getTipoPeriodoBadge = (tipo) => {
     const variants = {
       'semanal': 'primary',
@@ -210,6 +236,13 @@ const ReportesPage = () => {
           >
             <Eye size={16} />
           </Button>
+          <button
+            onClick={() => handleConfirmarEliminar(reporte)}
+            className="action-btn-compact text-red-600 hover:bg-red-50"
+            title="Eliminar reporte"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       )
     }
@@ -480,20 +513,21 @@ const ReportesPage = () => {
                       <Users className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                  {/* ==================== NUEVO: Texto más claro ==================== */}
-                  <p className="text-xs font-semibold text-blue-900 uppercase tracking-wide">Promedio Diario</p>
+                  <p className="text-xs font-semibold text-blue-900 uppercase tracking-wide">Ocupación Diaria Promedio</p>
                   <p className="text-4xl font-bold text-blue-600 mt-2">
-                    {selectedReporte.habitaciones_ocupadas}
+                    {selectedReporte.habitaciones_ocupadas} hab.
                   </p>
                   <p className="text-xs text-blue-700 mt-1 font-medium">
-                    de {selectedReporte.total_habitaciones} habitaciones
+                    ocupadas por día en promedio
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    de {selectedReporte.total_habitaciones} habitaciones totales
                   </p>
                   {selectedReporte.dias_periodo && (
-                    <p className="text-xs text-blue-600 mt-1 font-medium">
-                      ({selectedReporte.dias_periodo} días analizados)
+                    <p className="text-xs text-blue-500 mt-1 italic">
+                      Período de {selectedReporte.dias_periodo} días
                     </p>
                   )}
-                  {/* ==================== FIN NUEVO ==================== */}
                 </div>
 
                 <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-5 text-center shadow-md">
@@ -515,7 +549,7 @@ const ReportesPage = () => {
                 <Card module="gestion" className="border-2 shadow-lg">
                   <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-blue-600" />
-                    Distribución de Habitaciones
+                    Ocupación Promedio del Período
                   </h4>
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
@@ -667,6 +701,80 @@ const ReportesPage = () => {
             </div>
           )
         })()}
+      </Modal>
+
+      {/* Modal de Confirmación de Eliminación */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setReporteToDelete(null)
+        }}
+        title="Confirmar Eliminación"
+        size="sm"
+      >
+        {reporteToDelete && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border-l-4 border-red-400 p-4">
+              <div className="flex items-start">
+                <Trash2 className="text-red-600 mt-0.5 mr-3" size={20} />
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    ¿Estás seguro de eliminar este reporte?
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    Esta acción no se puede deshacer. El reporte será eliminado permanentemente del sistema.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="text-sm font-medium text-gray-900">Reporte #{reporteToDelete.id}</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Período: {new Date(reporteToDelete.fecha_inicio).toLocaleDateString()} - {new Date(reporteToDelete.fecha_fin).toLocaleDateString()}
+              </p>
+              <p className="text-xs text-gray-600">
+                Tipo: <Badge variant={getTipoPeriodoBadge(reporteToDelete.tipo_periodo)}>
+                  {reporteToDelete.tipo_periodo.toUpperCase()}
+                </Badge>
+              </p>
+              <p className="text-xs text-gray-600">
+                Ocupación: {reporteToDelete.porcentaje_ocupacion ? Number(reporteToDelete.porcentaje_ocupacion).toFixed(1) : '0.0'}%
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setReporteToDelete(null)
+                }}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarReporte}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Eliminar Reporte
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

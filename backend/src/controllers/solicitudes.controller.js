@@ -32,7 +32,7 @@ const listarSolicitudes = async (req, res, next) => {
       paramCount++;
     }
 
-    // Consulta con paginación
+    // Consulta con paginación (con conversión a zona horaria de Guatemala UTC-6)
     const result = await query(
       `SELECT
         ss.id,
@@ -46,10 +46,10 @@ const listarSolicitudes = async (req, res, next) => {
         ss.origen,
         ss.estado,
         ss.notas,
-        ss.creado_en,
+        (ss.creado_en AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as creado_en,
         ss.atendido_por,
         u.nombre || ' ' || u.apellido as atendido_por_nombre,
-        ss.fecha_atencion
+        (ss.fecha_atencion AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as fecha_atencion
       FROM solicitudes_servicios ss
       INNER JOIN habitaciones h ON ss.habitacion_id = h.id
       INNER JOIN servicios s ON ss.servicio_id = s.id
@@ -137,7 +137,7 @@ const crearSolicitud = async (req, res, next) => {
         origen,
         estado,
         notas,
-        creado_en`,
+        (creado_en AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as creado_en`,
       [habitacion_id, servicio_id, origen, notas]
     );
 
@@ -203,7 +203,7 @@ const completarSolicitud = async (req, res, next) => {
          servicio_id,
          estado,
          atendido_por,
-         fecha_atencion`,
+         (fecha_atencion AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as fecha_atencion`,
       [atendido_por, id]
     );
 
@@ -239,10 +239,10 @@ const obtenerSolicitud = async (req, res, next) => {
         ss.origen,
         ss.estado,
         ss.notas,
-        ss.creado_en,
+        (ss.creado_en AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as creado_en,
         ss.atendido_por,
         u.nombre || ' ' || u.apellido as atendido_por_nombre,
-        ss.fecha_atencion
+        (ss.fecha_atencion AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guatemala') as fecha_atencion
       FROM solicitudes_servicios ss
       INNER JOIN habitaciones h ON ss.habitacion_id = h.id
       INNER JOIN servicios s ON ss.servicio_id = s.id
@@ -264,9 +264,49 @@ const obtenerSolicitud = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/solicitudes/:id
+ * Eliminar solicitud completada
+ * @access Private (admin)
+ */
+const eliminarSolicitud = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Verificar que la solicitud existe y está completada
+    const solicitudResult = await query(
+      `SELECT id, estado FROM solicitudes_servicios WHERE id = $1`,
+      [id]
+    );
+
+    if (solicitudResult.rows.length === 0) {
+      throw { statusCode: 404, message: 'Solicitud no encontrada' };
+    }
+
+    if (solicitudResult.rows[0].estado !== 'completada') {
+      throw { statusCode: 400, message: 'Solo se pueden eliminar solicitudes completadas' };
+    }
+
+    // 2. Eliminar solicitud
+    const result = await query(
+      `DELETE FROM solicitudes_servicios WHERE id = $1 RETURNING id`,
+      [id]
+    );
+
+    log.success(`Solicitud ${id} eliminada por ${req.user.email}`);
+
+    return success(res, result.rows[0], 'Solicitud eliminada exitosamente');
+
+  } catch (err) {
+    log.error('Error al eliminar solicitud:', err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   listarSolicitudes,
   crearSolicitud,
   completarSolicitud,
-  obtenerSolicitud
+  obtenerSolicitud,
+  eliminarSolicitud
 };
