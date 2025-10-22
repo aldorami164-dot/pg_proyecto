@@ -150,7 +150,7 @@ Este proyecto está configurado para desplegarse en:
 
 Ver instrucciones detalladas de deployment en `docs/guias/`
 
-## 👥 Autor
+## 👥 Autor Antonio Ramirez Ajtzip
 
 Desarrollado para Hotel Casa Josefa
 Lago Atitlán, Guatemala
