@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Solo cargar dotenv en desarrollo (en Railway ya están las variables en el sistema)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 // DEBUG: Verificar variables de entorno
 console.log('\n🔧 DEBUG - Variables de entorno cargadas:');
