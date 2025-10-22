@@ -1,6 +1,6 @@
 # Dependencias
 node_modules/
-package-lock.json
+# package-lock.json (necesario para Railway deployment)
 
 # Variables de entorno
 .env
