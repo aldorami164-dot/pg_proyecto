@@ -1,23 +1,19 @@
 const { Pool } = require('pg');
 
-// Usar DATABASE_URL si está disponible (para producción en Render)
-// Si no, usar variables individuales (para desarrollo local)
-const useConnectionString = process.env.DATABASE_URL;
+// Determinar si estamos en producción basándonos en Railway o variables de producción
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
 
-if (useConnectionString) {
-  console.log('🔧 Usando DATABASE_URL para conexión');
-} else {
-  console.log('🔧 Configuración de conexión DB:');
-  console.log('   Host:', process.env.DB_HOST);
-  console.log('   Port:', process.env.DB_PORT);
-  console.log('   User:', process.env.DB_USER);
-  console.log('   Database:', process.env.DB_NAME);
-  console.log('   SSL:', process.env.DB_SSL);
-}
+console.log('🔧 Configuración de conexión DB:');
+console.log('   Entorno:', isProduction ? 'Producción' : 'Desarrollo');
+console.log('   Host:', process.env.DB_HOST);
+console.log('   Port:', process.env.DB_PORT);
+console.log('   User:', process.env.DB_USER);
+console.log('   Database:', process.env.DB_NAME);
+console.log('   SSL:', process.env.DB_SSL);
 
-const poolConfig = useConnectionString
+const poolConfig = isProduction
   ? {
-      // Usar variables de entorno (Railway/Render) con Supabase Pooler
+      // Configuración para producción (Railway + Supabase Pooler)
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT) || 6543,
       user: process.env.DB_USER,
@@ -38,8 +34,9 @@ const poolConfig = useConnectionString
       keepAlive: false,                  // Desactivar keep-alive
     }
   : {
+      // Configuración para desarrollo local
       host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
+      port: parseInt(process.env.DB_PORT) || 6543,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
