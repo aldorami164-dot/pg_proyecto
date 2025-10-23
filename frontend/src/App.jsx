@@ -92,6 +92,9 @@ function App() {
             <Route path="contacto" element={<ContactoPage />} />
           </Route>
 
+          {/* Ruta de compatibilidad para QR antiguos con dominio casajosefa.com */}
+          <Route path="/habitacion/:numeroHabitacion" element={<HabitacionPublicPage />} />
+
           {/* ===================================================================
               MÓDULO GESTIÓN (ADMIN)
               =================================================================== */}

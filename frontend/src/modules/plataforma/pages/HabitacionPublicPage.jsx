@@ -6,7 +6,7 @@ import qrService from '@shared/services/qrService'
 import useHabitacion from '@shared/hooks/useHabitacion'
 
 const HabitacionPublicPage = () => {
-  const { codigoQR } = useParams()
+  const { codigoQR, numeroHabitacion } = useParams()
   const navigate = useNavigate()
   const { guardarHabitacion } = useHabitacion()
 
@@ -14,10 +14,15 @@ const HabitacionPublicPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Determinar qué parámetro usar (priorizar codigoQR sobre numeroHabitacion)
+  const parametro = codigoQR || numeroHabitacion
+
   // Cargar información de la habitación y servicios
   useEffect(() => {
-    cargarDatos()
-  }, [codigoQR])
+    if (parametro) {
+      cargarDatos()
+    }
+  }, [parametro])
 
   const cargarDatos = async () => {
     setLoading(true)
@@ -25,7 +30,7 @@ const HabitacionPublicPage = () => {
 
     try {
       // Obtener información de la habitación por código QR
-      const response = await qrService.getHabitacionPorCodigo(codigoQR)
+      const response = await qrService.getHabitacionPorCodigo(parametro)
       console.log('🏠 Respuesta del QR:', response)
 
       // El backend retorna { habitacion: {...}, mensaje_bienvenida: "..." }

@@ -86,6 +86,7 @@ const generarQr = async (req, res, next) => {
     const creado_por = req.user.id;
 
     const codigosGenerados = [];
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     // Generar múltiples QR en una sola transacción
     for (let i = 0; i < cantidad; i++) {
@@ -93,9 +94,9 @@ const generarQr = async (req, res, next) => {
         `INSERT INTO codigos_qr
           (url_destino, estado, creado_por)
         VALUES
-          ('https://casajosefa.com/habitacion/PENDIENTE', 'sin_asignar', $1)
+          ($1, 'sin_asignar', $2)
         RETURNING id, codigo, url_destino, estado, creado_en`,
-        [creado_por]
+        [`${FRONTEND_URL}/plataforma/habitacion/PENDIENTE`, creado_por]
       );
 
       codigosGenerados.push(result.rows[0]);
@@ -126,6 +127,7 @@ const asignarQr = async (req, res, next) => {
 
     const { id } = req.params;
     const { habitacion_id } = req.body;
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     // 1. Verificar que el QR existe y está disponible
     const qrResult = await client.query(
@@ -173,7 +175,14 @@ const asignarQr = async (req, res, next) => {
       };
     }
 
-    // 3. Actualizar código QR
+    // 3. Obtener el código UUID del QR para construir la URL
+    const qrCodeResult = await client.query(
+      `SELECT codigo FROM codigos_qr WHERE id = $1`,
+      [id]
+    );
+    const codigoUUID = qrCodeResult.rows[0].codigo;
+
+    // 4. Actualizar código QR con URL que incluye el UUID
     const updateQrResult = await client.query(
       `UPDATE codigos_qr
        SET
@@ -183,10 +192,10 @@ const asignarQr = async (req, res, next) => {
          fecha_asignacion = CURRENT_TIMESTAMP
        WHERE id = $3
        RETURNING id, codigo, url_destino, habitacion_id, estado, fecha_asignacion`,
-      [habitacion_id, `https://casajosefa.com/habitacion/${habitacion.numero}`, id]
+      [habitacion_id, `${FRONTEND_URL}/plataforma/habitacion/${codigoUUID}`, id]
     );
 
-    // 4. Actualizar habitación
+    // 5. Actualizar habitación
     await client.query(
       `UPDATE habitaciones
        SET qr_asignado_id = $1
@@ -226,6 +235,7 @@ const desasignarQr = async (req, res, next) => {
     await client.query('BEGIN');
 
     const { id } = req.params;
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     // 1. Verificar que el QR existe y está asignado
     const qrResult = await client.query(
@@ -261,12 +271,12 @@ const desasignarQr = async (req, res, next) => {
       `UPDATE codigos_qr
        SET
          habitacion_id = NULL,
-         url_destino = 'https://casajosefa.com/habitacion/PENDIENTE',
+         url_destino = $1,
          estado = 'sin_asignar',
          fecha_asignacion = NULL
-       WHERE id = $1
+       WHERE id = $2
        RETURNING id, codigo, url_destino, estado`,
-      [id]
+      [`${FRONTEND_URL}/plataforma/habitacion/PENDIENTE`, id]
     );
 
     await client.query('COMMIT');
