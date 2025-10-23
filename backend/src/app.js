@@ -106,6 +106,22 @@ app.use('/api', generalLimiter);
 // RUTAS
 // =============================================================================
 
+// Ruta raíz - Bienvenida
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API Hotel System - Servidor en funcionamiento',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      documentation: 'Ver logs del servidor para lista completa de endpoints'
+    }
+  });
+});
+
 // Ruta de health check
 app.get('/health', (req, res) => {
   res.status(200).json({
