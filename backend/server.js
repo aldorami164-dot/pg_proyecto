@@ -1,6 +1,13 @@
 // IMPORTANTE: Cargar dotenv ANTES de cualquier import que use variables de entorno
-// En Railway, las variables ya están en el sistema, pero esto no afecta
-require('dotenv').config();
+const path = require('path');
+
+// Determinar qué archivo .env cargar
+const envFile = process.env.NODE_ENV === 'production'
+  ? '.env.production'
+  : '.env';
+
+console.log(`\n🔧 Cargando variables desde: ${envFile}`);
+require('dotenv').config({ path: path.join(__dirname, envFile) });
 
 // DEBUG: Verificar variables de entorno
 console.log('\n🔧 DEBUG - Variables de entorno cargadas:');

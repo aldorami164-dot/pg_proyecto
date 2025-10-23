@@ -5,7 +5,7 @@ node_modules/
 # Variables de entorno
 .env
 .env.local
-.env.production
+# .env.production - Incluido en repo para Railway (temporal)
 
 # Logs
 logs/
