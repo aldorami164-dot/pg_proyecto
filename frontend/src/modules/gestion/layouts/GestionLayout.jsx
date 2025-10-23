@@ -30,6 +30,7 @@ const GestionLayout = () => {
   const { user, logout } = useAuth()
   const { notifications, unreadCount, connected } = useWebSocket()
   const navigate = useNavigate()
+  // En desktop, sidebar abierto por defecto; en móvil, cerrado
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -57,36 +58,41 @@ const GestionLayout = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - Estilo SAT Guatemala */}
+      {/* Sidebar - Diseño Profesional Responsive */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white transition-all duration-300 ease-in-out ${
-          sidebarOpen ? 'w-60' : 'w-0 md:w-20'
+          sidebarOpen ? 'w-64' : '-translate-x-full md:translate-x-0 md:w-20'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Header del sidebar */}
-          <div className="h-16 flex items-center justify-center px-4 border-b border-slate-800">
+          <div className="h-16 flex items-center px-4 border-b border-slate-800">
             {sidebarOpen ? (
-              <div className="flex items-center gap-2 w-full">
-                <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Home size={18} className="text-white" />
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Home size={20} className="text-white" />
                 </div>
-                <h1 className="text-lg font-semibold text-white">Casa Josefa</h1>
-                {/* Botón mobile close */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg font-bold text-white truncate">Casa Josefa</h1>
+                  <p className="text-xs text-gray-400">Sistema de Gestión</p>
+                </div>
+                {/* Botón cerrar - visible solo en móvil */}
                 <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="md:hidden ml-auto p-2 rounded hover:bg-slate-800 transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                  className="md:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+                  aria-label="Cerrar menú"
                 >
-                  <X size={20} />
+                  <X size={22} className="text-gray-300" />
                 </button>
               </div>
             ) : (
               <div className="w-full flex justify-center">
-                {/* Botón para expandir en modo colapsado - solo visible en desktop */}
+                {/* Botón expandir - solo visible en desktop */}
                 <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="hidden md:flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-800 transition-all duration-300 ease-in-out"
+                  onClick={() => setSidebarOpen(true)}
+                  className="hidden md:flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-800 transition-all"
                   title="Expandir menú"
+                  aria-label="Expandir menú"
                 >
                   <Menu size={22} className="text-gray-300" />
                 </button>
@@ -107,19 +113,24 @@ const GestionLayout = () => {
                   <li key={item.path}>
                     <NavLink
                       to={item.path}
-                      onClick={() => setSidebarOpen(false)}
+                      onClick={() => {
+                        // Cerrar sidebar en móvil al hacer click
+                        if (window.innerWidth < 768) {
+                          setSidebarOpen(false)
+                        }
+                      }}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-300 ease-in-out group ${
+                        `flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
                           isActive
-                            ? 'bg-slate-700 text-white shadow-md border-l-4 border-slate-400'
-                            : 'text-gray-300 hover:bg-slate-800 hover:text-gray-100'
-                        } ${!sidebarOpen && 'justify-center'}`
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                            : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                        } ${!sidebarOpen && 'md:justify-center'}`
                       }
                       title={!sidebarOpen ? item.label : ''}
                     >
-                      <item.icon size={24} className="flex-shrink-0" />
+                      <item.icon size={22} className="flex-shrink-0" />
                       {sidebarOpen && (
-                        <span className="font-medium text-base transition-opacity duration-300">
+                        <span className="font-medium text-sm">
                           {item.label}
                         </span>
                       )}
@@ -176,23 +187,41 @@ const GestionLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? 'md:ml-60' : 'md:ml-20'}`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         {/* Top bar */}
-        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-300 font-medium">
+        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shadow-lg">
+          <div className="flex items-center gap-3">
+            {/* Botón hamburguesa - solo visible en móvil */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              aria-label="Abrir menú"
+            >
+              <Menu size={24} className="text-white" />
+            </button>
+
+            {/* Logo en móvil */}
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow">
+                <Home size={16} className="text-white" />
+              </div>
+              <span className="text-sm font-bold text-white">Casa Josefa</span>
+            </div>
+
+            {/* Título en desktop */}
+            <div className="hidden md:block text-sm text-gray-300 font-medium">
               Sistema de Gestión Hotelera
             </div>
           </div>
 
           {/* Notificaciones y estado */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <NotificationsDropdown />
 
-            {/* Indicador WebSocket */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800">
+            {/* Indicador WebSocket - adaptativo */}
+            <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-full bg-slate-800">
               <div className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-              <span className="text-xs text-gray-300 font-medium">
+              <span className="hidden sm:inline text-xs text-gray-300 font-medium">
                 {connected ? 'En línea' : 'Desconectado'}
               </span>
             </div>
@@ -200,16 +229,17 @@ const GestionLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile overlay when sidebar is open */}
+      {/* Overlay oscuro cuando el sidebar está abierto en móvil */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         ></div>
       )}
     </div>
