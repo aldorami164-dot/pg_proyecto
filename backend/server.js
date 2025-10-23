@@ -1,13 +1,28 @@
 // IMPORTANTE: Cargar dotenv ANTES de cualquier import que use variables de entorno
 const path = require('path');
 
-// Determinar qué archivo .env cargar
-const envFile = process.env.NODE_ENV === 'production'
-  ? '.env.production'
-  : '.env';
+// Detectar si estamos en Railway/producción
+const isProduction = process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production';
 
-console.log(`\n🔧 Cargando variables desde: ${envFile}`);
-require('dotenv').config({ path: path.join(__dirname, envFile) });
+// Establecer NODE_ENV si no está definido
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = isProduction ? 'production' : 'development';
+}
+
+// Determinar qué archivo .env cargar
+const envFile = isProduction ? '.env.production' : '.env';
+
+console.log(`\n🔧 Detectado: ${isProduction ? 'PRODUCCIÓN (Railway)' : 'DESARROLLO'}`);
+console.log(`🔧 Cargando variables desde: ${envFile}`);
+console.log(`🔧 Ruta completa: ${path.join(__dirname, envFile)}`);
+
+const result = require('dotenv').config({ path: path.join(__dirname, envFile) });
+
+if (result.error) {
+  console.error('❌ Error cargando .env:', result.error.message);
+} else {
+  console.log('✅ Variables cargadas:', Object.keys(result.parsed || {}).length, 'variables');
+}
 
 // DEBUG: Verificar variables de entorno
 console.log('\n🔧 DEBUG - Variables de entorno cargadas:');
