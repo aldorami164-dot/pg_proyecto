@@ -8,7 +8,4 @@ cmds = ["cd backend && npm install"]
 cmds = ["echo 'No build step required'"]
 
 [start]
-cmd = "cd backend && export NODE_ENV=production && node check-env.js && node server.js"
-
-[variables]
-NODE_ENV = "production"
+cmd = "cd backend && node -r ./load-env.js server.js"
