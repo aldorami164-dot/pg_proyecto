@@ -802,10 +802,10 @@ const ReservasPage = () => {
 
                               <button
                                 onClick={() => handleCambiarEstado(reserva.id, 'confirmada')}
-                                className="action-btn-compact text-green-600 hover:bg-green-50"
-                                title="Confirmar"
+                                className="inline-flex items-center justify-center h-7 px-3 rounded-md text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-all duration-150 hover:scale-105"
+                                title="Realizar Check-in"
                               >
-                                <CheckCircle size={16} />
+                                Check-in
                               </button>
 
                               <button
@@ -823,10 +823,10 @@ const ReservasPage = () => {
                             <>
                               <button
                                 onClick={() => handleCambiarEstado(reserva.id, 'completada')}
-                                className="action-btn-compact text-blue-600 hover:bg-blue-50"
-                                title="Check-out / Completar"
+                                className="inline-flex items-center justify-center h-7 px-3 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-150 hover:scale-105"
+                                title="Realizar Check-out"
                               >
-                                <CheckCircle size={16} />
+                                Check-out
                               </button>
 
                               <button
