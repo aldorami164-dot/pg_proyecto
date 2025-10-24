@@ -60,27 +60,6 @@ const LugaresPage = () => {
     )
   }
 
-  // Testimonios de ejemplo
-  const testimonios = [
-    {
-      name: "Ana Martínez",
-      location: "España",
-      rating: 5,
-      comment: "Los volcanes son impresionantes y las vistas del lago son simplemente mágicas. Un paraíso natural que todos deberían conocer."
-    },
-    {
-      name: "David Thompson",
-      location: "Canadá",
-      rating: 5,
-      comment: "Santiago Atitlán was a highlight of our trip. The local culture and handicrafts are amazing. Highly recommended!"
-    },
-    {
-      name: "Sofía Hernández",
-      location: "Colombia",
-      rating: 5,
-      comment: "Cada pueblo tiene su encanto único. La hospitalidad de la gente y la belleza del paisaje son incomparables."
-    }
-  ]
 
   // Filtrar lugares por categoría
   const lugaresFiltrados = filtroActivo === 'todos'
@@ -181,50 +160,6 @@ const LugaresPage = () => {
           </>
         )}
 
-        {/* Estadísticas / Trust Signals */}
-        {!loading && !error && lugares.length > 0 && (
-          <div className="bg-gradient-to-r from-plataforma-secondary-50 to-plataforma-nature-50 rounded-2xl p-8 mb-16 border border-plataforma-secondary-100">
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div>
-                <div className="text-4xl font-bold text-plataforma-secondary-700 mb-2">12+</div>
-                <div className="text-gray-600 font-medium">Pueblos Cercanos</div>
-              </div>
-              <div>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-4xl font-bold text-plataforma-secondary-700">4.9</span>
-                  <Star className="fill-yellow-400 text-yellow-400" size={32} />
-                </div>
-                <div className="text-gray-600 font-medium">Calificación Promedio</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-plataforma-secondary-700 mb-2">3</div>
-                <div className="text-gray-600 font-medium">Volcanes Majestuosos</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Testimonios */}
-        {!loading && !error && lugares.length > 0 && (
-          <div className="mb-16">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Lo que Dicen Nuestros Visitantes
-              </h2>
-              <p className="text-gray-600">Experiencias reales de viajeros como tú</p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {testimonios.map((testimonio, index) => (
-                <TestimonialCard
-                  key={index}
-                  {...testimonio}
-                  delay={index * 0.1}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* CTA Final - Contacto */}
         <div className="mb-16">

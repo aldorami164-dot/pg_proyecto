@@ -60,27 +60,6 @@ const ExperienciasPage = () => {
     )
   }
 
-  // Testimonios de ejemplo (podrían venir de la BD en el futuro)
-  const testimonios = [
-    {
-      name: "María González",
-      location: "Ciudad de Guatemala",
-      rating: 5,
-      comment: "Una experiencia inolvidable. El tour en lancha fue espectacular y los guías muy profesionales. Totalmente recomendado."
-    },
-    {
-      name: "John Smith",
-      location: "Estados Unidos",
-      rating: 5,
-      comment: "Amazing experience! The Mayan ceremony was authentic and the textile workshop was fascinating. Worth every penny."
-    },
-    {
-      name: "Carlos Ramírez",
-      location: "México",
-      rating: 5,
-      comment: "Excelente atención y organización. Las vistas del lago son impresionantes. Sin duda volveré con mi familia."
-    }
-  ]
 
   // Filtrar experiencias por categoría
   const experienciasFiltradas = filtroActivo === 'todas'
@@ -181,50 +160,6 @@ const ExperienciasPage = () => {
           </>
         )}
 
-        {/* Estadísticas / Trust Signals */}
-        {!loading && !error && experiencias.length > 0 && (
-          <div className="bg-gradient-to-r from-plataforma-primary-50 to-plataforma-nature-50 rounded-2xl p-8 mb-16 border border-plataforma-primary-100">
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div>
-                <div className="text-4xl font-bold text-plataforma-primary-700 mb-2">+500</div>
-                <div className="text-gray-600 font-medium">Tours Realizados</div>
-              </div>
-              <div>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-4xl font-bold text-plataforma-primary-700">4.8</span>
-                  <Star className="fill-yellow-400 text-yellow-400" size={32} />
-                </div>
-                <div className="text-gray-600 font-medium">Calificación Promedio</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-plataforma-primary-700 mb-2">98%</div>
-                <div className="text-gray-600 font-medium">Clientes Satisfechos</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Testimonios */}
-        {!loading && !error && experiencias.length > 0 && (
-          <div className="mb-16">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Lo que Dicen Nuestros Clientes
-              </h2>
-              <p className="text-gray-600">Experiencias reales de viajeros como tú</p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {testimonios.map((testimonio, index) => (
-                <TestimonialCard
-                  key={index}
-                  {...testimonio}
-                  delay={index * 0.1}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* CTA Final - Contacto */}
         <div className="mb-16">
