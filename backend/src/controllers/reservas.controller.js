@@ -753,14 +753,14 @@ const crearGrupoReservas = async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    const { huesped_id, huesped, habitaciones_ids, fecha_checkin, fecha_checkout, canal_reserva, numero_huespedes, notas } = req.body;
+    const { huesped_id, huesped, habitaciones, fecha_checkin, fecha_checkout, canal_reserva, notas } = req.body;
 
     // Validaciones básicas
-    if (!Array.isArray(habitaciones_ids) || habitaciones_ids.length === 0) {
+    if (!Array.isArray(habitaciones) || habitaciones.length === 0) {
       throw { statusCode: 400, message: 'Debe seleccionar al menos una habitación' };
     }
 
-    if (habitaciones_ids.length === 1) {
+    if (habitaciones.length === 1) {
       throw { statusCode: 400, message: 'Para una sola habitación, use el endpoint /api/reservas' };
     }
 
@@ -817,19 +817,22 @@ const crearGrupoReservas = async (req, res, next) => {
     log.info('🔍 Validando disponibilidad de habitaciones...');
     const habitacionesData = [];
     let precioTotalGrupo = 0;
+    let totalHuespedes = 0;
 
-    for (const hab_id of habitaciones_ids) {
+    for (const habInfo of habitaciones) {
+      const { habitacion_id, numero_huespedes } = habInfo;
+
       // Obtener información de la habitación
       const habitacionResult = await client.query(
         `SELECT h.id, h.numero, h.precio_por_noche, h.activo, th.nombre as tipo, th.capacidad_maxima
          FROM habitaciones h
          INNER JOIN tipos_habitacion th ON h.tipo_habitacion_id = th.id
          WHERE h.id = $1`,
-        [hab_id]
+        [habitacion_id]
       );
 
       if (habitacionResult.rows.length === 0) {
-        throw { statusCode: 404, message: `Habitación con ID ${hab_id} no encontrada` };
+        throw { statusCode: 404, message: `Habitación con ID ${habitacion_id} no encontrada` };
       }
 
       const habitacion = habitacionResult.rows[0];
@@ -838,10 +841,18 @@ const crearGrupoReservas = async (req, res, next) => {
         throw { statusCode: 400, message: `La habitación ${habitacion.numero} no está activa` };
       }
 
+      // Validar capacidad
+      if (numero_huespedes > habitacion.capacidad_maxima) {
+        throw {
+          statusCode: 400,
+          message: `La habitación ${habitacion.numero} tiene capacidad para ${habitacion.capacidad_maxima} personas, pero se especificaron ${numero_huespedes}`
+        };
+      }
+
       // Validar disponibilidad
       const validacion = await client.query(
         'SELECT validar_solapamiento_reservas($1, $2, $3, NULL) as disponible',
-        [hab_id, fechaCheckinFinal, fechaCheckoutFinal]
+        [habitacion_id, fechaCheckinFinal, fechaCheckoutFinal]
       );
 
       if (!validacion.rows[0].disponible) {
@@ -855,19 +866,22 @@ const crearGrupoReservas = async (req, res, next) => {
       const dias = Math.ceil((new Date(fechaCheckoutFinal) - new Date(fechaCheckinFinal)) / (1000 * 60 * 60 * 24));
       const precioHabitacion = parseFloat(habitacion.precio_por_noche) * dias;
       precioTotalGrupo += precioHabitacion;
+      totalHuespedes += numero_huespedes;
 
       habitacionesData.push({
         id: habitacion.id,
         numero: habitacion.numero,
         tipo: habitacion.tipo,
         precio_por_noche: habitacion.precio_por_noche,
-        precio_total: precioHabitacion
+        precio_total: precioHabitacion,
+        numero_huespedes: numero_huespedes  // ← Guardar número de huéspedes para esta habitación
       });
 
-      log.info(`  ✅ Habitación ${habitacion.numero} (${habitacion.tipo}) disponible`);
+      log.info(`  ✅ Habitación ${habitacion.numero} (${habitacion.tipo}) disponible - ${numero_huespedes} huésped(es)`);
     }
 
     log.info(`💰 Precio total del grupo: Q${precioTotalGrupo.toFixed(2)}`);
+    log.info(`👥 Total de huéspedes: ${totalHuespedes}`);
 
     // 4. Generar código de grupo
     const codigoGrupo = await client.query('SELECT generar_codigo_grupo() as codigo');
@@ -879,14 +893,15 @@ const crearGrupoReservas = async (req, res, next) => {
     const grupoResult = await client.query(
       `INSERT INTO grupos_reservas (
         codigo_grupo, huesped_principal_id, fecha_checkin, fecha_checkout,
-        numero_habitaciones, precio_total_grupo, canal_reserva, notas, creado_por
-      ) VALUES ($1, $2, $3::date, $4::date, $5, $6, $7, $8, $9) RETURNING *`,
+        numero_habitaciones, numero_huespedes_total, precio_total_grupo, canal_reserva, notas, creado_por
+      ) VALUES ($1, $2, $3::date, $4::date, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
         codigo_grupo,
         huesped_final_id,
         fechaCheckinFinal,
         fechaCheckoutFinal,
-        habitaciones_ids.length,
+        habitaciones.length,
+        totalHuespedes,  // ← TOTAL de huéspedes del grupo (suma de todos)
         precioTotalGrupo,
         canal_reserva || 'presencial',
         notas || null,
@@ -917,7 +932,7 @@ const crearGrupoReservas = async (req, res, next) => {
           fechaCheckinFinal,
           fechaCheckoutFinal,
           habData.precio_por_noche,
-          numero_huespedes || 2,
+          habData.numero_huespedes,  // ← Número de huéspedes específico de esta habitación
           canal_reserva || 'presencial',
           notas || null,
           req.user?.id || null,
@@ -932,12 +947,12 @@ const crearGrupoReservas = async (req, res, next) => {
         habitacion_tipo: habData.tipo
       });
 
-      log.success(`  ✅ Reserva individual creada: ${reserva.codigo_reserva} (Hab ${habData.numero})`);
+      log.success(`  ✅ Reserva individual creada: ${reserva.codigo_reserva} (Hab ${habData.numero} - ${habData.numero_huespedes} huésped(es))`);
     }
 
     await client.query('COMMIT');
 
-    log.success(`✅ Grupo de ${habitaciones_ids.length} reservas creado exitosamente`);
+    log.success(`✅ Grupo de ${habitaciones.length} reservas creado exitosamente con ${totalHuespedes} huéspedes totales`);
 
     // Formatear respuesta
     const respuesta = {
@@ -945,6 +960,7 @@ const crearGrupoReservas = async (req, res, next) => {
         id: grupo.id,
         codigo_grupo: grupo.codigo_grupo,
         numero_habitaciones: grupo.numero_habitaciones,
+        numero_huespedes_total: grupo.numero_huespedes_total,  // ← Total de huéspedes del grupo
         precio_total: parseFloat(grupo.precio_total_grupo).toFixed(2),
         fecha_checkin: grupo.fecha_checkin.toISOString().split('T')[0],
         fecha_checkout: grupo.fecha_checkout.toISOString().split('T')[0]

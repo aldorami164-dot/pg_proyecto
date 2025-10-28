@@ -90,12 +90,28 @@ const reservasService = {
     return response.data.data
   },
 
+  /**
+   * Crear grupo de reservas (múltiples habitaciones)
+   */
+  crearGrupoReservas: async (grupoData) => {
+    // Sanitizar fechas
+    const sanitizedData = {
+      ...grupoData,
+      fecha_checkin: String(grupoData.fecha_checkin),
+      fecha_checkout: String(grupoData.fecha_checkout)
+    }
+    console.log('🏨 reservasService.crearGrupoReservas - Datos enviados:', sanitizedData)
+    const response = await api.post('/reservas/grupo', sanitizedData)
+    return response.data.data
+  },
+
   // Alias para compatibilidad con las páginas
   listar: function(params) { return this.getReservas(params) },
   crear: function(data) { return this.createReserva(data) },
   actualizar: function(id, data) { return this.updateReserva(id, data) },
   cambiar: function(id, estado, motivo) { return this.cambiarEstado(id, estado, motivo) },
   eliminar: function(id) { return this.eliminarReserva(id) },
+  crearGrupo: function(data) { return this.crearGrupoReservas(data) },  // ← NUEVO ALIAS
 }
 
 export default reservasService

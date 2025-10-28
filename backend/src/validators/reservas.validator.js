@@ -81,15 +81,27 @@ const crearGrupoReservasSchema = Joi.object({
   }),
   huesped_id: Joi.number().integer().positive(),
 
-  // Array de IDs de habitaciones (mínimo 2)
-  habitaciones_ids: Joi.array()
-    .items(Joi.number().integer().positive())
+  // Array de objetos {habitacion_id, numero_huespedes} (mínimo 2)
+  habitaciones: Joi.array()
+    .items(
+      Joi.object({
+        habitacion_id: Joi.number().integer().positive().required(),
+        numero_huespedes: Joi.number().integer().positive().required()
+      })
+    )
     .min(2)
-    .unique()
     .required()
     .messages({
-      'array.min': 'Debe seleccionar al menos 2 habitaciones para crear un grupo',
-      'array.unique': 'No puede reservar la misma habitación más de una vez'
+      'array.min': 'Debe seleccionar al menos 2 habitaciones para crear un grupo'
+    })
+    .custom((value, helpers) => {
+      // Validar que no haya habitaciones duplicadas
+      const ids = value.map(h => h.habitacion_id)
+      const uniqueIds = new Set(ids)
+      if (ids.length !== uniqueIds.size) {
+        return helpers.error('any.invalid', { message: 'No puede reservar la misma habitación más de una vez' })
+      }
+      return value
     }),
 
   // Datos de la reserva
@@ -99,7 +111,6 @@ const crearGrupoReservasSchema = Joi.object({
   fecha_checkout: Joi.date().iso().greater(Joi.ref('fecha_checkin')).required().messages({
     'date.greater': 'La fecha de check-out debe ser posterior al check-in'
   }),
-  numero_huespedes: Joi.number().integer().positive().default(2),
   canal_reserva: Joi.string().valid('booking', 'whatsapp', 'facebook', 'telefono', 'presencial').default('presencial'),
   notas: Joi.string().max(500).allow('', null)
 }).xor('huesped', 'huesped_id').messages({

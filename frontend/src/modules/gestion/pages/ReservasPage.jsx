@@ -55,6 +55,10 @@ const ReservasPage = () => {
   const [habitacionesDisponibles, setHabitacionesDisponibles] = useState([])
   const [buscandoDisponibilidad, setBuscandoDisponibilidad] = useState(false)
 
+  // ← NUEVO: Estados para reservas múltiples
+  const [modoMultiple, setModoMultiple] = useState(false)
+  const [habitacionesSeleccionadas, setHabitacionesSeleccionadas] = useState({}) // { habitacion_id: numero_huespedes }
+
   const canales = [
     { value: 'booking', label: 'Booking.com' },
     { value: 'whatsapp', label: 'WhatsApp' },
@@ -140,6 +144,52 @@ const ReservasPage = () => {
     calcularPrecio()
   }, [formData.habitacion_id, formData.fecha_checkin, formData.fecha_checkout])
 
+  // ← NUEVO: Funciones para modo múltiple
+  const toggleHabitacionSeleccionada = (habitacionId) => {
+    setHabitacionesSeleccionadas(prev => {
+      const newSelection = { ...prev }
+      if (habitacionId in newSelection) {
+        delete newSelection[habitacionId]
+      } else {
+        newSelection[habitacionId] = 1 // Valor por defecto: 1 huésped
+      }
+      return newSelection
+    })
+  }
+
+  const actualizarHuespedesHabitacion = (habitacionId, numeroHuespedes) => {
+    setHabitacionesSeleccionadas(prev => ({
+      ...prev,
+      [habitacionId]: parseInt(numeroHuespedes) || 1
+    }))
+  }
+
+  const calcularPrecioTotal = () => {
+    if (!formData.fecha_checkin || !formData.fecha_checkout) return 0
+
+    const noches = calcularNoches(formData.fecha_checkin, formData.fecha_checkout)
+    if (noches <= 0) return 0
+
+    if (modoMultiple) {
+      // Calcular precio de todas las habitaciones seleccionadas
+      return Object.keys(habitacionesSeleccionadas).reduce((total, habId) => {
+        const habitacion = habitacionesDisponibles.find(h => h.id === parseInt(habId))
+        if (habitacion) {
+          return total + (noches * parseFloat(habitacion.precio_por_noche))
+        }
+        return total
+      }, 0)
+    } else {
+      // Precio de habitación individual
+      if (!formData.habitacion_id) return 0
+      const habitacion = habitacionesDisponibles.find(h => h.id === parseInt(formData.habitacion_id))
+      if (habitacion) {
+        return noches * parseFloat(habitacion.precio_por_noche)
+      }
+      return 0
+    }
+  }
+
   // Buscar habitaciones disponibles cuando cambien las fechas
   useEffect(() => {
     const buscarDisponibilidad = async () => {
@@ -208,11 +258,19 @@ const ReservasPage = () => {
       return
     }
 
-    // Construir el objeto correcto para el backend
-    // Asegurar que las fechas se envíen en formato correcto sin conversión de zona horaria
+    // ← NUEVO: Validar modo múltiple
+    const numHabitaciones = Object.keys(habitacionesSeleccionadas).length
+    if (modoMultiple && numHabitaciones === 0) {
+      toastMessages.generico.error('Debe seleccionar al menos una habitación')
+      return
+    }
+
+    if (modoMultiple && numHabitaciones === 1) {
+      toastMessages.generico.error('Para una sola habitación, desactiva el modo múltiple')
+      return
+    }
 
     // FIX CRÍTICO: Asegurar que las fechas sean STRINGS puros, no objetos Date
-    // Si formData tiene Date objects, convertirlos a string YYYY-MM-DD
     const fechaCheckinString = typeof formData.fecha_checkin === 'string'
       ? formData.fecha_checkin
       : formData.fecha_checkin?.toISOString().split('T')[0]
@@ -221,27 +279,9 @@ const ReservasPage = () => {
       ? formData.fecha_checkout
       : formData.fecha_checkout?.toISOString().split('T')[0]
 
-    const dataToSend = {
-      huesped: {
-        nombre: formData.huesped_nombre,
-        apellido: formData.huesped_apellido || null,
-        email: formData.huesped_email || null,
-        telefono: formData.huesped_telefono || null,
-        dpi_pasaporte: formData.huesped_dpi || null
-      },
-      habitacion_id: parseInt(formData.habitacion_id),
-      // IMPORTANTE: Enviar solo STRING en formato YYYY-MM-DD (NO objetos Date)
-      fecha_checkin: fechaCheckinString,
-      fecha_checkout: fechaCheckoutString,
-      numero_huespedes: parseInt(formData.numero_huespedes),
-      canal_reserva: formData.canal_reserva,
-      notas: formData.notas || null
-    }
-
     try {
       if (selectedReserva) {
-        // Para actualizar solo se envían los campos permitidos
-        // FIX: Asegurar que las fechas sean strings
+        // EDITAR RESERVA (no soporta modo múltiple)
         const updateData = {
           fecha_checkin: fechaCheckinString,
           fecha_checkout: fechaCheckoutString,
@@ -250,7 +290,52 @@ const ReservasPage = () => {
         }
         await reservasService.actualizar(selectedReserva.id, updateData)
         toastMessages.reservas.actualizar.success({ codigo: selectedReserva.codigo_reserva })
+      } else if (modoMultiple) {
+        // ← NUEVO: CREAR GRUPO DE RESERVAS
+        // Convertir objeto {habitacion_id: numero_huespedes} a array de objetos
+        const habitaciones = Object.entries(habitacionesSeleccionadas).map(([id, huespedes]) => ({
+          habitacion_id: parseInt(id),
+          numero_huespedes: parseInt(huespedes)
+        }))
+
+        const grupoData = {
+          huesped: {
+            nombre: formData.huesped_nombre,
+            apellido: formData.huesped_apellido || null,
+            email: formData.huesped_email || null,
+            telefono: formData.huesped_telefono || null,
+            dpi_pasaporte: formData.huesped_dpi || null
+          },
+          habitaciones: habitaciones,  // ← Array de {habitacion_id, numero_huespedes}
+          fecha_checkin: fechaCheckinString,
+          fecha_checkout: fechaCheckoutString,
+          canal_reserva: formData.canal_reserva,
+          notas: formData.notas || null
+        }
+
+        console.log('🏨 Creando grupo de reservas:', grupoData)
+        const result = await reservasService.crearGrupo(grupoData)
+        toastMessages.generico.success(
+          `Grupo de ${result.reservas.length} reservas creado exitosamente (${result.grupo.codigo_grupo})`
+        )
       } else {
+        // CREAR RESERVA INDIVIDUAL (modo actual)
+        const dataToSend = {
+          huesped: {
+            nombre: formData.huesped_nombre,
+            apellido: formData.huesped_apellido || null,
+            email: formData.huesped_email || null,
+            telefono: formData.huesped_telefono || null,
+            dpi_pasaporte: formData.huesped_dpi || null
+          },
+          habitacion_id: parseInt(formData.habitacion_id),
+          fecha_checkin: fechaCheckinString,
+          fecha_checkout: fechaCheckoutString,
+          numero_huespedes: parseInt(formData.numero_huespedes),
+          canal_reserva: formData.canal_reserva,
+          notas: formData.notas || null
+        }
+
         const result = await reservasService.crear(dataToSend)
         toastMessages.reservas.crear.success({
           codigo: result.codigo_reserva,
@@ -265,7 +350,6 @@ const ReservasPage = () => {
       console.error('❌ Error completo:', error)
       console.error('❌ Response data:', JSON.stringify(error.response?.data, null, 2))
       console.error('❌ Response status:', error.response?.status)
-      console.error('❌ Datos enviados:', JSON.stringify(dataToSend, null, 2))
 
       // Mostrar errores de validación específicos
       if (error.response?.data?.errors) {
@@ -332,6 +416,9 @@ const ReservasPage = () => {
       notas: ''
     })
     setSelectedReserva(null)
+    // ← NUEVO: Limpiar estados de modo múltiple
+    setModoMultiple(false)
+    setHabitacionesSeleccionadas([])
   }
 
   const handleEdit = (reserva) => {
@@ -904,7 +991,33 @@ const ReservasPage = () => {
 
           {/* PASO 2: Habitación (solo se habilita después de seleccionar fechas) */}
           <div className="bg-gestion-primary-50 border-l-4 border-gestion-primary-500 p-4 mb-4">
-            <h3 className="font-semibold text-gestion-primary-900 mb-2">Paso 2: Selecciona la habitación</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-gestion-primary-900">Paso 2: Selecciona la habitación</h3>
+
+              {/* ← NUEVO: Checkbox para activar modo múltiple */}
+              {!selectedReserva && formData.fecha_checkin && formData.fecha_checkout && habitacionesDisponibles.length >= 2 && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={modoMultiple}
+                    onChange={(e) => {
+                      setModoMultiple(e.target.checked)
+                      if (e.target.checked) {
+                        // Al activar modo múltiple, limpiar selección individual
+                        setFormData({ ...formData, habitacion_id: '' })
+                      } else {
+                        // Al desactivar, limpiar selección múltiple
+                        setHabitacionesSeleccionadas([])
+                      }
+                    }}
+                    className="w-4 h-4 text-gestion-primary-600 rounded focus:ring-gestion-primary-500"
+                  />
+                  <span className="text-sm text-gestion-primary-700 font-medium">
+                    Reservar múltiples habitaciones
+                  </span>
+                </label>
+              )}
+            </div>
 
             {!formData.fecha_checkin || !formData.fecha_checkout ? (
               <p className="text-sm text-gray-600">Primero selecciona las fechas para ver habitaciones disponibles</p>
@@ -913,23 +1026,110 @@ const ReservasPage = () => {
             ) : habitacionesDisponibles.length === 0 ? (
               <p className="text-sm text-red-600">No hay habitaciones disponibles para estas fechas</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-sm text-green-600">
                   ✓ {habitacionesDisponibles.length} habitación(es) disponible(s)
                 </p>
-                <Select
-                  label="Habitación disponible"
-                  name="habitacion_id"
-                  value={formData.habitacion_id}
-                  onChange={(e) => setFormData({ ...formData, habitacion_id: e.target.value })}
-                  options={habitacionesDisponibles.map(h => ({
-                    value: h.id,
-                    label: `Hab. ${h.numero} - ${h.tipo} - ${h.capacidad_maxima} personas - Q${h.precio_por_noche}/noche`
-                  }))}
-                  required
-                  disabled={!!selectedReserva}
-                  module="gestion"
-                />
+
+                {/* ← MODO INDIVIDUAL (actual) */}
+                {!modoMultiple ? (
+                  <Select
+                    label="Habitación disponible"
+                    name="habitacion_id"
+                    value={formData.habitacion_id}
+                    onChange={(e) => setFormData({ ...formData, habitacion_id: e.target.value })}
+                    options={habitacionesDisponibles.map(h => ({
+                      value: h.id,
+                      label: `Hab. ${h.numero} - ${h.tipo} - ${h.capacidad_maxima} personas - Q${h.precio_por_noche}/noche`
+                    }))}
+                    required
+                    disabled={!!selectedReserva}
+                    module="gestion"
+                  />
+                ) : (
+                  /* ← NUEVO: MODO MÚLTIPLE */
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Selecciona las habitaciones (mínimo 2)
+                    </label>
+                    <div className="max-h-96 overflow-y-auto border border-gestion-primary-200 rounded-lg p-2 space-y-2 bg-white">
+                      {habitacionesDisponibles.map(habitacion => {
+                        const isSelected = habitacion.id in habitacionesSeleccionadas
+                        return (
+                          <div
+                            key={habitacion.id}
+                            className={`
+                              p-3 rounded-lg transition-all
+                              ${isSelected
+                                ? 'bg-gestion-primary-100 border-2 border-gestion-primary-500'
+                                : 'bg-gray-50 border-2 border-gray-200'
+                              }
+                            `}
+                          >
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleHabitacionSeleccionada(habitacion.id)}
+                                className="mt-1 w-5 h-5 text-gestion-primary-600 rounded focus:ring-gestion-primary-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-gray-900">
+                                    Habitación {habitacion.numero}
+                                  </span>
+                                  <span className="text-sm font-bold text-gestion-primary-700">
+                                    Q{parseFloat(habitacion.precio_por_noche).toFixed(2)}/noche
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  {habitacion.tipo} • {habitacion.capacidad_maxima} personas
+                                </div>
+                              </div>
+                            </label>
+
+                            {/* ← NUEVO: Input de número de huéspedes para esta habitación */}
+                            {isSelected && (
+                              <div className="mt-3 ml-8">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Número de huéspedes en esta habitación:
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={habitacion.capacidad_maxima}
+                                  value={habitacionesSeleccionadas[habitacion.id]}
+                                  onChange={(e) => actualizarHuespedesHabitacion(habitacion.id, e.target.value)}
+                                  className="w-24 px-2 py-1 border border-gestion-primary-300 rounded-md text-sm focus:ring-2 focus:ring-gestion-primary-500 focus:border-transparent"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <span className="ml-2 text-xs text-gray-500">
+                                  (máx: {habitacion.capacidad_maxima})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Resumen de selección */}
+                    {Object.keys(habitacionesSeleccionadas).length > 0 && (
+                      <div className="bg-gestion-primary-100 border border-gestion-primary-300 rounded-lg p-3 mt-3">
+                        <p className="text-sm font-semibold text-gestion-primary-900">
+                          ✓ {Object.keys(habitacionesSeleccionadas).length} habitación(es) seleccionada(s)
+                        </p>
+                        <p className="text-xs text-gestion-primary-700 mt-1">
+                          Total huéspedes: {Object.values(habitacionesSeleccionadas).reduce((sum, n) => sum + n, 0)} personas
+                        </p>
+                        <p className="text-xs text-gestion-primary-700 mt-1">
+                          Total: Q{calcularPrecioTotal().toFixed(2)}
+                          ({calcularNoches(formData.fecha_checkin, formData.fecha_checkout)} noche(s))
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -992,18 +1192,20 @@ const ReservasPage = () => {
           </div>
 
           {/* PASO 4: Detalles adicionales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <Input
-              label="Número de huéspedes"
-              type="number"
-              name="numero_huespedes"
-              value={formData.numero_huespedes}
-              onChange={(e) => setFormData({ ...formData, numero_huespedes: e.target.value })}
-              min="1"
-              required
-              module="gestion"
-            />
+          <div className={`grid grid-cols-1 ${!modoMultiple ? 'md:grid-cols-2' : ''} gap-4`}>
+            {/* Solo mostrar número de huéspedes si NO está en modo múltiple */}
+            {!modoMultiple && (
+              <Input
+                label="Número de huéspedes"
+                type="number"
+                name="numero_huespedes"
+                value={formData.numero_huespedes}
+                onChange={(e) => setFormData({ ...formData, numero_huespedes: e.target.value })}
+                min="1"
+                required
+                module="gestion"
+              />
+            )}
 
             <Select
               label="Canal de reserva"
