@@ -3,8 +3,8 @@ const Joi = require('joi');
 // Esquema para crear habitación
 const crearHabitacionSchema = Joi.object({
   numero: Joi.string().min(1).max(10).required(),
-  tipo_habitacion_id: Joi.number().integer().positive().valid(1, 2, 3, 4).required().messages({
-    'any.only': 'El tipo de habitación debe ser 1 (Individual), 2 (Doble), 3 (Triple) o 4 (Familiar)'
+  tipo_habitacion_id: Joi.number().integer().positive().valid(1, 2, 3, 4, 26, 27, 28).required().messages({
+    'any.only': 'El tipo de habitación debe ser 1 (Individual), 2 (Doble), 3 (Triple), 4 (Familiar), 26 (Cuádruple), 27 (Quíntuple) o 28 (Apartamento)'
   }),
   precio_por_noche: Joi.number().positive().precision(2).required().messages({
     'number.positive': 'El precio debe ser mayor a 0'

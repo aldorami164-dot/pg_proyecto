@@ -741,6 +741,236 @@ const eliminarReserva = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/reservas/grupo
+ * Crear grupo de reservas (múltiples habitaciones para un mismo huésped)
+ */
+const crearGrupoReservas = async (req, res, next) => {
+  const client = await getClient();
+
+  try {
+    log.info('📥 Creando grupo de reservas:', JSON.stringify(req.body, null, 2));
+
+    await client.query('BEGIN');
+
+    const { huesped_id, huesped, habitaciones_ids, fecha_checkin, fecha_checkout, canal_reserva, numero_huespedes, notas } = req.body;
+
+    // Validaciones básicas
+    if (!Array.isArray(habitaciones_ids) || habitaciones_ids.length === 0) {
+      throw { statusCode: 400, message: 'Debe seleccionar al menos una habitación' };
+    }
+
+    if (habitaciones_ids.length === 1) {
+      throw { statusCode: 400, message: 'Para una sola habitación, use el endpoint /api/reservas' };
+    }
+
+    let huesped_final_id;
+
+    // 1. Crear o usar huésped existente
+    if (huesped_id) {
+      log.info('🔍 Usando huésped existente:', huesped_id);
+      huesped_final_id = huesped_id;
+
+      const huespedExiste = await client.query(
+        'SELECT id FROM huespedes WHERE id = $1',
+        [huesped_final_id]
+      );
+
+      if (huespedExiste.rows.length === 0) {
+        throw { statusCode: 404, message: 'Huésped no encontrado' };
+      }
+    } else if (huesped) {
+      log.info('✨ Creando nuevo huésped para el grupo');
+      const { nombre, apellido, dpi_pasaporte, email, telefono, pais, direccion, fecha_nacimiento } = huesped;
+
+      const nuevoHuesped = await client.query(
+        `INSERT INTO huespedes (nombre, apellido, dpi_pasaporte, email, telefono, pais, direccion, fecha_nacimiento)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [nombre, apellido || null, dpi_pasaporte || null, email || null, telefono || null, pais || null, direccion || null, fecha_nacimiento || null]
+      );
+
+      huesped_final_id = nuevoHuesped.rows[0].id;
+      log.success('✅ Huésped creado con ID:', huesped_final_id);
+    } else {
+      throw { statusCode: 400, message: 'Debe proporcionar huesped_id o datos de huesped' };
+    }
+
+    // 2. Sanitizar fechas
+    let fechaCheckinFinal = fecha_checkin;
+    let fechaCheckoutFinal = fecha_checkout;
+
+    if (fechaCheckinFinal instanceof Date) {
+      fechaCheckinFinal = fechaCheckinFinal.toISOString().split('T')[0];
+    } else if (typeof fechaCheckinFinal === 'string' && fechaCheckinFinal.includes('T')) {
+      fechaCheckinFinal = fechaCheckinFinal.split('T')[0];
+    }
+
+    if (fechaCheckoutFinal instanceof Date) {
+      fechaCheckoutFinal = fechaCheckoutFinal.toISOString().split('T')[0];
+    } else if (typeof fechaCheckoutFinal === 'string' && fechaCheckoutFinal.includes('T')) {
+      fechaCheckoutFinal = fechaCheckoutFinal.split('T')[0];
+    }
+
+    log.info('📅 Fechas sanitizadas:', { checkin: fechaCheckinFinal, checkout: fechaCheckoutFinal });
+
+    // 3. Validar disponibilidad de TODAS las habitaciones
+    log.info('🔍 Validando disponibilidad de habitaciones...');
+    const habitacionesData = [];
+    let precioTotalGrupo = 0;
+
+    for (const hab_id of habitaciones_ids) {
+      // Obtener información de la habitación
+      const habitacionResult = await client.query(
+        `SELECT h.id, h.numero, h.precio_por_noche, h.activo, th.nombre as tipo, th.capacidad_maxima
+         FROM habitaciones h
+         INNER JOIN tipos_habitacion th ON h.tipo_habitacion_id = th.id
+         WHERE h.id = $1`,
+        [hab_id]
+      );
+
+      if (habitacionResult.rows.length === 0) {
+        throw { statusCode: 404, message: `Habitación con ID ${hab_id} no encontrada` };
+      }
+
+      const habitacion = habitacionResult.rows[0];
+
+      if (!habitacion.activo) {
+        throw { statusCode: 400, message: `La habitación ${habitacion.numero} no está activa` };
+      }
+
+      // Validar disponibilidad
+      const validacion = await client.query(
+        'SELECT validar_solapamiento_reservas($1, $2, $3, NULL) as disponible',
+        [hab_id, fechaCheckinFinal, fechaCheckoutFinal]
+      );
+
+      if (!validacion.rows[0].disponible) {
+        throw {
+          statusCode: 409,
+          message: `La habitación ${habitacion.numero} no está disponible del ${fechaCheckinFinal} al ${fechaCheckoutFinal}`
+        };
+      }
+
+      // Calcular precio
+      const dias = Math.ceil((new Date(fechaCheckoutFinal) - new Date(fechaCheckinFinal)) / (1000 * 60 * 60 * 24));
+      const precioHabitacion = parseFloat(habitacion.precio_por_noche) * dias;
+      precioTotalGrupo += precioHabitacion;
+
+      habitacionesData.push({
+        id: habitacion.id,
+        numero: habitacion.numero,
+        tipo: habitacion.tipo,
+        precio_por_noche: habitacion.precio_por_noche,
+        precio_total: precioHabitacion
+      });
+
+      log.info(`  ✅ Habitación ${habitacion.numero} (${habitacion.tipo}) disponible`);
+    }
+
+    log.info(`💰 Precio total del grupo: Q${precioTotalGrupo.toFixed(2)}`);
+
+    // 4. Generar código de grupo
+    const codigoGrupo = await client.query('SELECT generar_codigo_grupo() as codigo');
+    const codigo_grupo = codigoGrupo.rows[0].codigo;
+
+    log.info(`🏷️  Código de grupo generado: ${codigo_grupo}`);
+
+    // 5. Crear registro en grupos_reservas
+    const grupoResult = await client.query(
+      `INSERT INTO grupos_reservas (
+        codigo_grupo, huesped_principal_id, fecha_checkin, fecha_checkout,
+        numero_habitaciones, precio_total_grupo, canal_reserva, notas, creado_por
+      ) VALUES ($1, $2, $3::date, $4::date, $5, $6, $7, $8, $9) RETURNING *`,
+      [
+        codigo_grupo,
+        huesped_final_id,
+        fechaCheckinFinal,
+        fechaCheckoutFinal,
+        habitaciones_ids.length,
+        precioTotalGrupo,
+        canal_reserva || 'presencial',
+        notas || null,
+        req.user?.id || null
+      ]
+    );
+
+    const grupo = grupoResult.rows[0];
+    log.success('✅ Grupo de reservas creado:', grupo.id);
+
+    // 6. Crear reservas individuales para cada habitación
+    const reservasCreadas = [];
+
+    for (const habData of habitacionesData) {
+      const reservaResult = await client.query(
+        `INSERT INTO reservas (
+          huesped_id, habitacion_id, fecha_checkin, fecha_checkout,
+          precio_por_noche, numero_huespedes, canal_reserva, estado_id, notas,
+          creado_por, grupo_reserva_id
+        ) VALUES (
+          $1, $2, $3::date, $4::date, $5, $6, $7,
+          (SELECT id FROM estados_reserva WHERE nombre = 'pendiente'),
+          $8, $9, $10
+        ) RETURNING *`,
+        [
+          huesped_final_id,
+          habData.id,
+          fechaCheckinFinal,
+          fechaCheckoutFinal,
+          habData.precio_por_noche,
+          numero_huespedes || 2,
+          canal_reserva || 'presencial',
+          notas || null,
+          req.user?.id || null,
+          grupo.id  // ← RELACIÓN CON GRUPO
+        ]
+      );
+
+      const reserva = reservaResult.rows[0];
+      reservasCreadas.push({
+        ...reserva,
+        habitacion_numero: habData.numero,
+        habitacion_tipo: habData.tipo
+      });
+
+      log.success(`  ✅ Reserva individual creada: ${reserva.codigo_reserva} (Hab ${habData.numero})`);
+    }
+
+    await client.query('COMMIT');
+
+    log.success(`✅ Grupo de ${habitaciones_ids.length} reservas creado exitosamente`);
+
+    // Formatear respuesta
+    const respuesta = {
+      grupo: {
+        id: grupo.id,
+        codigo_grupo: grupo.codigo_grupo,
+        numero_habitaciones: grupo.numero_habitaciones,
+        precio_total: parseFloat(grupo.precio_total_grupo).toFixed(2),
+        fecha_checkin: grupo.fecha_checkin.toISOString().split('T')[0],
+        fecha_checkout: grupo.fecha_checkout.toISOString().split('T')[0]
+      },
+      reservas: reservasCreadas.map(r => ({
+        id: r.id,
+        codigo_reserva: r.codigo_reserva,
+        habitacion_id: r.habitacion_id,
+        habitacion_numero: r.habitacion_numero,
+        habitacion_tipo: r.habitacion_tipo,
+        precio_por_noche: parseFloat(r.precio_por_noche).toFixed(2),
+        estado: 'pendiente'
+      }))
+    };
+
+    return success(res, respuesta, 'Grupo de reservas creado exitosamente');
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    log.error('Error al crear grupo de reservas:', err);
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listarReservas,
   crearReserva,
@@ -748,5 +978,6 @@ module.exports = {
   cambiarEstado,
   consultarDisponibilidad,
   obtenerReserva,
-  eliminarReserva
+  eliminarReserva,
+  crearGrupoReservas  // ← NUEVA FUNCIÓN EXPORTADA
 };

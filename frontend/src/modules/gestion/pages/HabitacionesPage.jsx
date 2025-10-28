@@ -51,7 +51,10 @@ const HabitacionesPage = () => {
     { value: 'simple', label: 'Individual' },
     { value: 'doble', label: 'Doble' },
     { value: 'triple', label: 'Triple' },
-    { value: 'familiar', label: 'Familiar' }
+    { value: 'familiar', label: 'Familiar' },
+    { value: 'cuadruple', label: 'Cuádruple' },
+    { value: 'quintuple', label: 'Quíntuple' },
+    { value: 'apartamento', label: 'Apartamento' }
   ]
 
   const tiposHabitacionFiltro = [
@@ -59,7 +62,10 @@ const HabitacionesPage = () => {
     { value: '1', label: 'Individual' },
     { value: '2', label: 'Doble' },
     { value: '3', label: 'Triple' },
-    { value: '4', label: 'Familiar' }
+    { value: '4', label: 'Familiar' },
+    { value: '26', label: 'Cuádruple' },
+    { value: '27', label: 'Quíntuple' },
+    { value: '28', label: 'Apartamento' }
   ]
 
   useEffect(() => {
@@ -92,7 +98,10 @@ const HabitacionesPage = () => {
         'simple': 1,
         'doble': 2,
         'triple': 3,
-        'familiar': 4
+        'familiar': 4,
+        'cuadruple': 26,
+        'quintuple': 27,
+        'apartamento': 28
       }
 
       const dataToSend = {
@@ -180,7 +189,10 @@ const HabitacionesPage = () => {
       1: 'simple',
       2: 'doble',
       3: 'triple',
-      4: 'familiar'
+      4: 'familiar',
+      26: 'cuadruple',
+      27: 'quintuple',
+      28: 'apartamento'
     }
 
     setFormData({
@@ -273,7 +285,10 @@ const HabitacionesPage = () => {
       1: 'from-blue-400 to-blue-600',      // Individual
       2: 'from-cyan-400 to-blue-500',      // Doble
       3: 'from-indigo-400 to-blue-600',    // Triple
-      4: 'from-slate-500 to-blue-700'      // Familiar
+      4: 'from-slate-500 to-blue-700',     // Familiar
+      26: 'from-purple-400 to-purple-600',  // Cuádruple
+      27: 'from-pink-400 to-purple-600',    // Quíntuple
+      28: 'from-amber-500 to-orange-600'    // Apartamento
     }
     return gradientes[tipoId] || 'from-gray-400 to-gray-600'
   }

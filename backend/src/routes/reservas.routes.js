@@ -8,7 +8,8 @@ const {
   actualizarReservaSchema,
   cambiarEstadoSchema,
   disponibilidadQuerySchema,
-  listarReservasQuerySchema
+  listarReservasQuerySchema,
+  crearGrupoReservasSchema  // ← NUEVO
 } = require('../validators/reservas.validator');
 const { createLimiter } = require('../middleware/rateLimit');
 
@@ -60,6 +61,20 @@ router.post(
   createLimiter,
   validate(crearReservaSchema),
   reservasController.crearReserva
+);
+
+/**
+ * @route   POST /api/reservas/grupo
+ * @desc    Crear grupo de reservas (múltiples habitaciones para un mismo huésped)
+ * @access  Private (admin/recepcionista)
+ */
+router.post(
+  '/grupo',
+  verificarToken,
+  esPersonal,
+  createLimiter,
+  validate(crearGrupoReservasSchema),
+  reservasController.crearGrupoReservas
 );
 
 /**
